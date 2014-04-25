@@ -31,5 +31,6 @@ module Dynflow
   require 'dynflow/world'
   require 'dynflow/simple_world'
   require 'dynflow/daemon'
-
+  require 'dynflow/exporter'
+  require 'dynflow/importer'
 end
