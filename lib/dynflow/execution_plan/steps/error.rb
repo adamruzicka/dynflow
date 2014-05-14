@@ -31,7 +31,11 @@ module Dynflow
       end
 
       def self.new_from_hash(hash)
-        self.new(hash[:exception_class].constantize, hash[:message], hash[:backtrace], nil)
+        exception_class = hash[:exception_class].safe_constantize
+        self.new(exception_class.nil? ? Dynflow::Error : exception_class,
+                 hash[:message],
+                 hash[:backtrace],
+                 nil)
       end
 
       def to_hash
