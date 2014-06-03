@@ -2,6 +2,9 @@ require 'dynflow'
 require 'pp'
 require 'sinatra'
 require 'yaml'
+require 'tmpdir'
+require 'zlib'
+require 'archive/tar/minitar'
 
 module Dynflow
   class WebConsole < Sinatra::Base
@@ -252,6 +255,48 @@ module Dynflow
 
       @plans = world.persistence.find_execution_plans(options)
       erb :index
+    end
+    
+    post('/api/execution_plans/add') do
+      Dir.mktmpdir do |tmp|
+        Dir.chdir(tmp) do
+          tgz = Zlib::GzipReader.new(File.open(params['upload'][:tempfile], 'rb'))
+          Archive::Tar::Minitar.unpack(tgz, '.')
+          importer = Dynflow::Importer.new(world)
+          begin
+            importer.import_from_dir(params['upload'][:filename].gsub(/\.tar\.gz$/,''))
+            status 200
+          rescue Exception => e
+            status 406
+            body "Action files are missing"
+          end
+        end
+      end
+    end
+
+    post('/api/execution_plans') do
+      plans = world.persistence.find_execution_plans(params).map { |plan| plan.id }
+      MultiJson.dump(plans)
+    end
+
+    get('/api/execution_plans/:id') do |id|
+      begin
+        exporter = Dynflow::Exporter.new(world)
+        MultiJson.dump(exporter.export_execution_plan(id))
+      rescue
+        status 404
+        body "Execution plan with id '#{id}' not found."
+      end
+    end
+
+    get('/api/execution_plans/:id/actions/:action_id') do |id, action_id|
+      begin
+        exporter = Dynflow::Exporter.new(world)
+        MultiJson.dump(exporter.export_action(id, action_id))
+      rescue
+        status 404
+        body "Action with ID '#{action_id}' was not found in plan '#{id}'."
+      end
     end
 
     get('/:id') do |id|
