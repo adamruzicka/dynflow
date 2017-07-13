@@ -49,6 +49,7 @@ module Dynflow
   require 'dynflow/semaphores'
   require 'dynflow/throttle_limiter'
   require 'dynflow/config'
+  require 'dynflow/state_machine'
 
   if defined? ::ActiveJob
     require 'dynflow/active_job/queue_adapter'

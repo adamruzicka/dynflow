@@ -35,3 +35,5 @@ end
 group :memory_watcher do
   gem 'get_process_mem'
 end
+
+gem 'sourcify'

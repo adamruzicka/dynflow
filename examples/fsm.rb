@@ -7,39 +7,22 @@ module FSM
     extend  ::Dynflow::StateMachineClassMethods
     include ::Dynflow::StateMachineInstanceMethods
 
-    define_states do
       state 'initial', :initial => true
-      state 'testing'
-    end
+      state 'counting'
+      state 'final', :final => true
 
-    define_transitions do
-      transition '
-    end
-
-    def set_states
-      add_state 'initial', :initial => true
-      add_state 'counting'
-      add_state 'final', :final => true
-      self.class.load_states
-    end
-    
-    def set_transitions
-      state_transition 'initial', 'counting' do
+      transition 'initial', 'counting' do
         output[:counter] = 0
-        suspended_action << nil
       end
 
-      state_transition 'counting', 'counting', :condition => ->(*args) { !stopping_condition } do
+      transition 'counting', 'counting', :condition => proc { |event| !stopping_condition } do
         output[:counter] += 1
-        suspended_action << nil
       end
 
-      state_transition 'counting', 'final', :condition => ->(*args) { stopping_condition } do
-        puts "Ending"
+      transition 'counting', 'final', :condition => :stopping_condition do
         finish
       end
-    end
-
+    
     def stopping_condition
       output[:counter] >= 5
     end
