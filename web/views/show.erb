@@ -1,0 +1,97 @@
+<p>
+  <b>Id:</b>
+  <%= h(@plan.id) %>
+</p>
+<p>
+  <b>Label:</b>
+  <%= h(@plan.label) %>
+</p>
+<p>
+  <b>Status:</b>
+  <%= h(@plan.state) %>
+  <% if @plan.state == :paused %>
+    <a href="<%= url("/#{@plan.id}/resume") %>" class="postlink">Resume</a>
+  <% end %>
+  <% if @plan.valid? && @plan.cancellable? %>
+    <a href="<%= url("/#{@plan.id}/cancel") %>" class="postlink">Cancel</a>
+  <% end %>
+</p>
+
+<p>
+  <b>Result:</b>
+  <%= h(@plan.result) %>
+</p>
+
+<% if @plan.state == :scheduled && @plan.delay_record %>
+  <p>
+    <b>Start at:</b>
+    <%= h(@plan.delay_record.start_at) %>
+  </p>
+  <p>
+    <b>Start before:</b>
+    <%= h(@plan.delay_record.start_before || "-") %>
+  </p>
+<% end %>
+
+<p>
+  <b>Started at:</b>
+  <%= h(@plan.started_at) %>
+</p>
+
+<p>
+  <b>Ended at:</b>
+  <%= h(@plan.ended_at) %>
+</p>
+
+<ul class="phases nav nav-tabs" id="myTab">
+  <li><a href="#plan">Plan</a></li>
+  <li class="active"><a href="#run">Run</a></li>
+  <li><a href="#finalize">Finalize</a></li>
+  <li><a href="#execution-history">Execution History</a></li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane" id="plan">
+    <% if @plan.valid? && @plan.root_plan_step %>
+      <%= erb :plan_step, locals: { step: @plan.root_plan_step } %>
+    <% else %>
+      N/A
+    <% end %>
+  </div>
+  <div class="tab-pane active" id="run">
+    <% if @plan.valid? %>
+      <%= erb :flow, locals: { flow: @plan.run_flow } %>
+      <table class="flow-hint">
+        <tr>
+          <td class="border sequence"> </td>
+          <td>sequence</td>
+          <td class="border concurrence"> </td>
+          <td>concurrence</td>
+        </tr>
+      </table>
+    <% else %>
+      N/A
+    <% end %>
+  </div>
+  <div class="tab-pane" id="finalize">
+    <% if @plan.valid? %>
+      <%= erb :flow, locals: { flow: @plan.finalize_flow } %>
+    <% else %>
+      N/A
+    <% end %>
+  </div>
+  <div class="tab-pane" id="execution-history">
+    <%= erb :execution_history %>
+  </div>
+</div>
+
+<script>
+$(function () {
+  $('.phases a').click(function (e) {
+    e.preventDefault();
+    $(this).tab('show');
+  });
+})
+</script>
+
+<a href="<%= url '/' %>">Back</a>

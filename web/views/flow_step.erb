@@ -1,0 +1,48 @@
+<% action = load_action(step) %>
+
+<% if flow.is_a? Dynflow::Flows::Atom %>
+   <div class="<%= h(atom_css_classes(flow)) %>" style=" width: <%= progress_width(step) %>%;"></div>
+<% end %>
+
+<span class="step-label">
+  <%= h(step.id) %>: <%= h(step.action_class.name) %>
+  (<%= h(action.humanized_state) %>)
+  <% unless step.state == :pending %>
+    [ <%= duration_to_s(step.real_time) %> / <%= duration_to_s(step.execution_time) %> ]
+  <% end %>
+</span>
+<% if @plan.state == :paused && step.skippable? %>
+  <a href="<%= url("/#{@plan.id}/skip/#{step.id}") %>" class="postlink">Skip</a>
+<% end %>
+<% if step.with_sub_plans? %>
+  <a href="<%= url("/#{@plan.id}/actions/#{step.action_id}/sub_plans") %>">Sub plans</a>
+<% end %>
+<% if step.cancellable? %>
+  <a href="<%= url("/#{@plan.id}/cancel/#{step.id}") %>" class="postlink">Cancel</a>
+<% end %>
+
+<div class="action">
+  <% unless @plan.state == :pending %>
+    <p><b>Started at:</b> <%= h(step.started_at) %></p>
+    <p><b>Ended at:</b> <%= h(step.ended_at) %></p>
+    <p><b>Real time:</b> <%= duration_to_s(step.real_time) %></p>
+    <p><b>Execution time (excluding suspended state):</b> <%= duration_to_s(step.execution_time) %></p>
+  <% end %>
+  <%= show_action_data("Input:", action.input) %>
+  <%= show_action_data("Output:", action.output) %>
+  <% if step.error %>
+    <p>
+      <b>Error:</b>
+    </p>
+    <p>
+      <%= h(step.error.exception_class) %>
+    </p>
+    <p>
+      <%= h(step.error.message) %>
+    </p>
+    <p>
+      <%= prettyprint(step.error.backtrace) %>
+    </p>
+  <% end %>
+</div>
+

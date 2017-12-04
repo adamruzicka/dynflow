@@ -1,0 +1,17 @@
+<ul class="plan-step">
+  <li>
+    <p class="step-label">
+      <span class="label label-<%= step_css_class(step) %>"><%= h("#{step.action_class}") %></span>
+    </p>
+    <div class="action">
+      <p><b>Started at:</b> <%= h(step.started_at) %></p>
+      <p><b>Ended at:</b> <%= h(step.ended_at) %> (duration <%= duration_to_s(step.real_time) %>)</p>
+      <% action = step.action @plan %>
+      <%= show_action_data("Input:", action.input) %>
+      <%= step_error(step) %>
+    </div>
+    <% step.children.each do |sub_step_id| %>
+      <%= erb :plan_step, locals: { step: @plan.steps[sub_step_id] } %>
+    <% end %>
+  </li>
+</ul>
