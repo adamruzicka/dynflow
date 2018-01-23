@@ -123,6 +123,7 @@ module Dynflow
       else
         # ignore
       end
+      execute_action_hooks(state)
       logger.debug format('%13s %s    %9s >> %9s',
                           'ExecutionPlan', id, original, state)
       self.save
@@ -521,7 +522,25 @@ module Dynflow
       end
     end
 
+    def execute_action_hooks(kind)
+      case kind
+      when :stopped
+        :stop
+      when :paused
+        :pause
+      end
+      actions.each do |action|
+        action.class.execution_plan_hooks[kind].each do |hook|
+          begin
+            hook.call
+          rescue => e
+            world.logger.error("Failed to execute '#{kind}' execution plan hook for #{execution_plan_id}")          
+          end
+        end
+      end
+    end
     private_class_method :steps_from_hash
   end
+
   # rubocop:enable Metrics/ClassLength
 end

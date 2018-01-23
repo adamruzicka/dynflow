@@ -26,6 +26,10 @@ module OrchestrateEvented
 
   class CreateInfrastructure < Dynflow::Action
 
+    execution_plan_hooks.on_success do
+      puts "Done!"
+    end
+
     def plan(get_stuck = false)
       sequence do
         concurrence do

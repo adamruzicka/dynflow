@@ -25,6 +25,8 @@ module Dynflow
     require 'dynflow/action/with_sub_plans'
     require 'dynflow/action/with_bulk_sub_plans'
     require 'dynflow/action/with_polling_sub_plans'
+    require 'dynflow/action/execution_plan_hooks'
+    extend Action::ExecutionPlanHooks
 
     def self.all_children
       children.values.inject(children.values) do |children, child|
