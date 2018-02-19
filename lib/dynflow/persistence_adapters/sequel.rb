@@ -284,7 +284,9 @@ module Dynflow
         if value
           record = prepare_record(what, value, (existing_record || condition), with_data)
           if existing_record
-            with_retry { table.where(condition).update(record) }
+            changes = trim_unchanged(record, existing_record)
+            return if changes.empty?
+            with_retry { table.where(condition).update(changes) }
           else
             with_retry { table.insert record }
           end
@@ -293,6 +295,12 @@ module Dynflow
           existing_record and with_retry { table.where(condition).delete }
         end
         value
+      end
+
+      def trim_unchanged(record, existing_record)
+        record.reduce({}) do |acc, (key, value)|
+          existing_record[key] == value ? acc : acc.merge(key => value)
+        end
       end
 
       def load_record(what, condition)
