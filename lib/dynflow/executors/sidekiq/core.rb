@@ -14,6 +14,15 @@ module Dynflow
         def initialize(*_args)
           super
           schedule_update_telemetry
+          @recovery = true
+          OrchestratorJobs::FinishStartup.perform_async
+        end
+
+        def finish_startup
+          @world.logger.info "Performing world validity checks"
+          result = @world.perform_validity_checks
+          @world.logger.info "Finished world validity checks, invalidated #{result} worlds"
+          @recovery = false
         end
 
         def start_termination(*args)
@@ -31,6 +40,11 @@ module Dynflow
           work_items.each do |new_work|
             WorkerJobs::PerformWork.set(queue: suggest_queue(new_work)).perform_async(new_work)
           end
+        end
+
+        def work_finished(work)
+          # Drop everything if in recovery
+          super unless @recovery
         end
 
         def update_telemetry
