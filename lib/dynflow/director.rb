@@ -20,9 +20,10 @@ module Dynflow
     UnprocessableEvent = Class.new(Dynflow::Error)
 
     class WorkItem < Serializable
-      attr_reader :execution_plan_id, :queue
+      attr_reader :execution_plan_id, :queue, :origin_world_id
 
-      def initialize(execution_plan_id, queue)
+      def initialize(origin_world_id, execution_plan_id, queue)
+        @origin_world_id = origin_world_id
         @execution_plan_id = execution_plan_id
         @queue = queue
       end
@@ -44,20 +45,21 @@ module Dynflow
 
       def to_hash
         { class: self.class.name,
+          origin_world_id: origin_world_id,
           execution_plan_id: execution_plan_id,
           queue: queue }
       end
 
       def self.new_from_hash(hash, *_args)
-        self.new(hash[:execution_plan_id], hash[:queue])
+        self.new(hash[:origin_world_id], hash[:execution_plan_id], hash[:queue])
       end
     end
 
     class StepWorkItem < WorkItem
       attr_reader :step
 
-      def initialize(execution_plan_id, step, queue)
-        super(execution_plan_id, queue)
+      def initialize(origin_world_id, execution_plan_id, step, queue)
+        super(origin_world_id, execution_plan_id, queue)
         @step = step
       end
 
@@ -70,7 +72,8 @@ module Dynflow
       end
 
       def self.new_from_hash(hash, *_args)
-        self.new(hash[:execution_plan_id],
+        self.new(hash[:origin_world_id],
+                 hash[:execution_plan_id],
                  Serializable.from_hash(hash[:step], hash[:execution_plan_id], Dynflow.process_world),
                  hash[:queue])
       end
@@ -79,8 +82,8 @@ module Dynflow
     class EventWorkItem < StepWorkItem
       attr_reader :event, :request_id
 
-      def initialize(request_id, execution_plan_id, step, event, queue)
-        super(execution_plan_id, step, queue)
+      def initialize(origin_world_id, request_id, execution_plan_id, step, event, queue)
+        super(origin_world_id, execution_plan_id, step, queue)
         @event = event
         @request_id = request_id
       end
@@ -94,7 +97,8 @@ module Dynflow
       end
 
       def self.new_from_hash(hash, *_args)
-        self.new(hash[:request_id],
+        self.new(hash[:origin_world_id],
+                 hash[:request_id],
                  hash[:execution_plan_id],
                  Serializable.from_hash(hash[:step], hash[:execution_plan_id], Dynflow.process_world),
                  Dynflow.serializer.load(hash[:event]),
@@ -106,8 +110,8 @@ module Dynflow
       attr_reader :finalize_steps_data
 
       # @param finalize_steps_data - used to pass the result steps from the worker back to orchestrator
-      def initialize(execution_plan_id, queue, finalize_steps_data = nil)
-        super(execution_plan_id, queue)
+      def initialize(origin_world_id, execution_plan_id, queue, finalize_steps_data = nil)
+        super(origin_world_id, execution_plan_id, queue)
         @finalize_steps_data = finalize_steps_data
       end
 
@@ -123,7 +127,7 @@ module Dynflow
       end
 
       def self.new_from_hash(hash, *_args)
-        self.new(hash[:execution_plan_id], hash[:queue], hash[:finalize_steps_data])
+        self.new(hash[:origin_world_id], hash[:execution_plan_id], hash[:queue], hash[:finalize_steps_data])
       end
     end
 
@@ -167,6 +171,10 @@ module Dynflow
     end
 
     def work_finished(work)
+      unless work.origin_world_id == @world.id
+        logger.info "Received work item from another world, dropping"
+        return []
+      end
       manager = @execution_plan_managers[work.execution_plan_id]
       return [] unless manager # skip case when getting event from execution plan that is not running anymore
       unless_done(manager, manager.what_is_next(work))
