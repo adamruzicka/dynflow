@@ -38,8 +38,13 @@ class SampleAction < Dynflow::Action
     plan_self(number: number)
   end
 
-  def run
-    puts "Running action: #{input[:number]}"
+  def run(event = nil)
+    puts "The action will now go to sleep, send SIGINT to the worker's process"
+    sleep 1000
+  end
+
+  def rescue_strategy
+    Dynflow::Action::Rescue::Fail
   end
 end
 
@@ -70,6 +75,7 @@ class RemoteExecutorExample
         config.executor            = ::Dynflow::Executors::Sidekiq::Core
         config.process_role        = :orchestrator
         config.auto_validity_check = false
+        config.auto_rescue         = true
       end
     end
 
@@ -127,16 +133,16 @@ class RemoteExecutorExample
         config.connector           = connector
       end
 
-      world.trigger(OrchestrateEvented::CreateInfrastructure)
-      world.trigger(OrchestrateEvented::CreateInfrastructure, true)
+      # world.trigger(OrchestrateEvented::CreateInfrastructure)
+      # world.trigger(OrchestrateEvented::CreateInfrastructure, true)
 
-      loop do
-        start_time = Time.now
+      # loop do
+      #   start_time = Time.now
         world.trigger(SampleAction).finished.wait
-        finished_in = Time.now - start_time
-        puts "Finished in #{finished_in}s"
-        sleep 0.5
-      end
+      #   finished_in = Time.now - start_time
+      #   puts "Finished in #{finished_in}s"
+      #   sleep 0.5
+      # end
     end
 
   end
