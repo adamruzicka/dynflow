@@ -5,7 +5,8 @@ module Dynflow
 
       TrackedRequest = Algebrick.type do
         fields! id: String, request: Request,
-                accepted: Concurrent::Promises::ResolvableFuture, finished: Concurrent::Promises::ResolvableFuture
+                accepted: type { variants NilClass, Concurrent::Promises::ResolvableFuture },
+                finished: type { variants NilClass, Concurrent::Promises::ResolvableFuture }
       end
 
       module TrackedRequest
@@ -114,8 +115,8 @@ module Dynflow
 
       def publish_request(future, request, timeout)
         with_ping_request_caching(request, future) do
-          track_request(future, request, timeout) do |tracked_request|
-            dispatch_request(request, @world.id, tracked_request.id)
+          track_request(future, request, timeout) do |tracked_request, expect_reply|
+            dispatch_request(request, @world.id, tracked_request.id, expect_reply)
           end
         end
       end
@@ -131,7 +132,7 @@ module Dynflow
         finish_termination
       end
 
-      def dispatch_request(request, client_world_id, request_id)
+      def dispatch_request(request, client_world_id, request_id, expect_reply)
         executor_id = match request,
                             (on ~Execution do |execution|
                                AnyExecutor
@@ -141,8 +142,8 @@ module Dynflow
                              end),
                             (on Ping.(~any, ~any) | Status.(~any, ~any) do |receiver_id, _|
                                receiver_id
-                             end)
-        envelope = Envelope[request_id, client_world_id, executor_id, request]
+                            end)
+        envelope = Envelope[request_id, client_world_id, executor_id, request, expect_reply]
         if Dispatcher::UnknownWorld === envelope.receiver_id
           raise Dynflow::Error, "Could not find an executor for #{envelope}"
         end
@@ -200,10 +201,12 @@ module Dynflow
       def track_request(finished, request, timeout)
         id_suffix = @last_id_suffix += 1
         id = "#{@world.id}-#{id_suffix}"
-        tracked_request = TrackedRequest[id, request, Concurrent::Promises.resolvable_future, finished]
-        @tracked_requests[id] = tracked_request
-        @world.clock.ping(self, timeout, [:timeout, id]) if timeout
-        yield tracked_request
+        tracked_request = TrackedRequest[id, request, finished.nil? ? nil : Concurrent::Promises.resolvable_future, finished]
+        if finished
+          @tracked_requests[id] = tracked_request
+          @world.clock.ping(self, timeout, [:timeout, id]) if timeout
+        end
+        yield tracked_request, !!finished
       rescue Dynflow::Error => e
         resolve_tracked_request(tracked_request.id, e)
         log(Logger::ERROR, e)

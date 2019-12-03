@@ -9,11 +9,11 @@ module Dynflow
       @step_id           = action.run_step_id
     end
 
-    def plan_event(event, time, sent = Concurrent::Promises.resolvable_future)
+    def plan_event(event, time, sent = nil)
       @world.plan_event(execution_plan_id, step_id, event, time, sent)
     end
 
-    def event(event, sent = Concurrent::Promises.resolvable_future)
+    def event(event, sent = nil)
       # TODO: deprecate 2 levels backtrace (to know it's called from clock or internaly)
       # remove lib/dynflow/clock.rb ClockReference#ping branch condition on removal.
       plan_event(event, nil, sent)

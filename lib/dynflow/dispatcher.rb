@@ -38,7 +38,8 @@ module Dynflow
       fields! request_id: String,
               sender_id: String,
               receiver_id: type { variants String, AnyExecutor = atom, UnknownWorld = atom },
-              message: type { variants Request, Response }
+              message: type { variants Request, Response },
+              expect_reply: type { variants TrueClass, FalseClass }
     end
 
     module Envelope
@@ -46,7 +47,8 @@ module Dynflow
         Envelope[self.request_id,
                  sender.id,
                  self.sender_id,
-                 response_message]
+                 response_message,
+                 false]
       end
     end
 

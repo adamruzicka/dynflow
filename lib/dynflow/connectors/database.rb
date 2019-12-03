@@ -114,6 +114,8 @@ module Dynflow
             self.tell([:handle_envelope, envelope])
           end
         rescue => e
+          puts e
+          puts e.backtrace
           log(Logger::ERROR, "Receiving envelopes failed on #{e}")
         end
 
@@ -127,7 +129,7 @@ module Dynflow
         end
 
         def update_receiver_id(envelope, new_receiver_id)
-          Dispatcher::Envelope[envelope.request_id, envelope.sender_id, new_receiver_id, envelope.message]
+          Dispatcher::Envelope[envelope.request_id, envelope.sender_id, new_receiver_id, envelope.message, envelope.expect_reply]
         end
 
         def find_receiver(envelope)

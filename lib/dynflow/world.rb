@@ -215,15 +215,15 @@ module Dynflow
 
     # @return [Concurrent::Promises::ResolvableFuture] containing execution_plan when finished
     # raises when ExecutionPlan is not accepted for execution
-    def execute(execution_plan_id, done = Concurrent::Promises.resolvable_future)
+    def execute(execution_plan_id, done = nil)
       publish_request(Dispatcher::Execution[execution_plan_id], done, true)
     end
 
-    def event(execution_plan_id, step_id, event, done = Concurrent::Promises.resolvable_future)
+    def event(execution_plan_id, step_id, event, done = nil)
       publish_request(Dispatcher::Event[execution_plan_id, step_id, event], done, false)
     end
 
-    def plan_event(execution_plan_id, step_id, event, time, accepted = Concurrent::Promises.resolvable_future)
+    def plan_event(execution_plan_id, step_id, event, time, accepted = nil)
       publish_request(Dispatcher::Event[execution_plan_id, step_id, event, time], accepted, false)
     end
 
@@ -242,7 +242,7 @@ module Dynflow
     def publish_request(request, done, wait_for_accepted, timeout = nil)
       accepted = Concurrent::Promises.resolvable_future
       accepted.rescue do |reason|
-        done.reject reason if reason
+        done.reject reason if done && reason
       end
       client_dispatcher.ask([:publish_request, done, request, timeout], accepted)
       accepted.wait if wait_for_accepted
