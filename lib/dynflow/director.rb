@@ -117,10 +117,34 @@ module Dynflow
       end
 
       def execute
-        execution_plan = world.persistence.load_execution_plan(execution_plan_id)
-        manager = Director::SequentialManager.new(world, execution_plan)
-        manager.finalize
-        @finalize_steps_data = manager.finalize_steps.map(&:to_hash)
+        @execution_plan = world.persistence.load_execution_plan(execution_plan_id)
+
+        reset_finalize_steps
+        unless @execution_plan.error?
+          step_id = @execution_plan.finalize_flow.all_step_ids.first
+          action_class = @execution_plan.steps[step_id].action_class
+          world.middleware.execute(:finalize_phase, action_class, @execution_plan) do
+            @flow_manager.promise_flow(@execution_plan.finalize_flow) do |done, step_id|
+              @execution_plan.steps[step_id].execute
+              done.fulfill true
+            end.wait
+          end
+        end
+
+        @finalize_steps_data = finalize_steps.map(&:to_hash)
+      end
+
+      def finalize_steps
+        @execution_plan.finalize_flow.all_step_ids.map do |step_id|
+          @execution_plan.steps[step_id]
+        end
+      end
+
+      def reset_finalize_steps
+        @flow_manager = FlowManager.new(@execution_plan, @execution_plan.finalize_flow)
+        finalize_steps.each do |step|
+          step.state = :pending if [:success, :error].include? step.state
+        end
       end
 
       def to_hash

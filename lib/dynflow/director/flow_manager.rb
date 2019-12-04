@@ -32,12 +32,36 @@ module Dynflow
         end
       end
 
+      def promise_flow(flow, &block)
+        flow_to_promises(flow, Concurrent::Promises.resolved_event, &block)
+      end
+
       private
 
       def build_root_cursor
         # the root cursor has to always run against sequence
         sequence = @flow.is_a?(Flows::Sequence) ? @flow : Flows::Sequence.new([@flow])
         return SequenceCursor.new(self, sequence, nil)
+      end
+
+      def flow_to_promises(flow, parent_promise, &block)
+        case flow
+        when Flows::Atom
+          done = Concurrent::Promises.resolvable_future
+          parent_promise.then do
+            yield done, flow.step_id
+          end
+          done
+        when Flows::Sequence
+          flow.flows.reduce(parent_promise) do |parent, subflow|
+            flow_to_promises(subflow, parent, &block)
+          end
+        when Flows::Concurrence
+          futures = flow.flows.map do |subflow|
+            flow_to_promises(subflow, parent_promise, &block)
+          end
+          Concurrent::Promises.zip_futures(*futures)
+        end
       end
     end
   end
