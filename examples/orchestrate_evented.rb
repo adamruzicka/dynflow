@@ -169,8 +169,8 @@ module OrchestrateEvented
 end
 
 if $0 == __FILE__
-  ExampleHelper.world.trigger(OrchestrateEvented::CreateInfrastructure)
-  ExampleHelper.world.trigger(OrchestrateEvented::CreateInfrastructure, true)
+  1.times { ExampleHelper.world.trigger(OrchestrateEvented::CreateInfrastructure) }
+  # ExampleHelper.world.trigger(OrchestrateEvented::CreateInfrastructure, true)
   puts example_description
   ExampleHelper.run_web_console
 end

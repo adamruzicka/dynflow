@@ -10,11 +10,9 @@ module Dynflow
           @world          = Type! world, World
           @pools          = {}
           @terminated     = nil
-          @director       = Director.new(@world)
+          @director       = Director.new(@world, self)
           @heartbeat_interval = heartbeat_interval
           @queues_options = queues_options
-          @flow_managers = {}
-          @running_steps = {}
 
           schedule_heartbeat
         end
@@ -25,18 +23,7 @@ module Dynflow
                   "cannot accept execution_plan_id:#{execution_plan_id} core is terminating"
           end
 
-          execution_plan = @world.persistence.load_execution_plan(execution_plan_id)
-          manager = ::Dynflow::Director::FlowManager.new(execution_plan, execution_plan.run_flow)
-          @flow_managers[execution_plan_id] = manager
-          manager.promise_flow(execution_plan.run_flow) do |done, step_id|
-            puts "EXECUTING #{step_id}"
-            @running_steps[execution_plan_id] = {}
-            @running_steps[execution_plan_id][step_id] = done
-            execution_plan.update_state(:running)
-            step = execution_plan.steps[step_id]
-            handle_work(::Dynflow::Director::StepWorkItem.new(execution_plan.id, step, step.queue, @world.id))
-          end
-          # handle_work(@director.start_execution(execution_plan_id, finished))
+          @director.start_execution(execution_plan_id, finished)
         end
 
         def handle_event(event)
@@ -45,9 +32,7 @@ module Dynflow
             raise Dynflow::Error,
                   "cannot accept event: #{event} core is terminating"
           end
-          execution_plan = @world.persistence.load_execution_plan(event.execution_plan_id)
-          step = execution_plan.steps[event.step_id]
-          handle_work(::Dynflow::Director::EventWorkItem.new(event.request_id, event.execution_plan_id, step, event.event, step.queue, @world.id))
+          @director.handle_event(event)
         end
 
         def plan_events(delayed_events)
@@ -57,18 +42,7 @@ module Dynflow
         end
 
         def work_finished(work, delayed_events = nil)
-          return if work.step.state == :suspended
-          done = @running_steps[work.execution_plan_id][work.step.id]
-          case work
-          when StepWorkItem
-            if work.state == :success
-              done.fulfill true
-            else
-              done.reject false
-            end
-          when FinalizeWorkItem
-
-          end
+          @director.work_finished(work)
           plan_events(delayed_events) if delayed_events
         end
 
@@ -116,6 +90,14 @@ module Dynflow
           schedule_heartbeat
         end
 
+        def handle_work(work_items)
+          return if terminating?
+          return if work_items.nil?
+          work_items = [work_items] if work_items.is_a? Director::WorkItem
+          work_items.all? { |i| Type! i, Director::WorkItem }
+          feed_pool(work_items)
+        end
+
         private
 
         def suggest_queue(work_item)
@@ -139,16 +121,6 @@ module Dynflow
           super
         rescue Errors::PersistenceError => e
           handle_persistence_error(e)
-        end
-
-        def handle_work(work_items)
-          puts "HANDLING #{work_items}"
-          return if terminating?
-          return if work_items.nil?
-          puts "REALLY HANDLING #{work_items}"
-          work_items = [work_items] if work_items.is_a? Director::WorkItem
-          work_items.all? { |i| Type! i, Director::WorkItem }
-          feed_pool(work_items)
         end
 
         def feed_pool(work_items)

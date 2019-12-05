@@ -163,11 +163,12 @@ module Dynflow
     require 'dynflow/director/sequential_manager'
     require 'dynflow/director/running_steps_manager'
 
-    attr_reader :logger
+    attr_reader :logger, :executor
 
-    def initialize(world)
+    def initialize(world, executor)
       @world = world
       @logger = world.logger
+      @executor = executor
       @execution_plan_managers = {}
       @rescued_steps = {}
     end
@@ -178,8 +179,8 @@ module Dynflow
 
     def start_execution(execution_plan_id, finished)
       manager = track_execution_plan(execution_plan_id, finished)
-      return [] unless manager
-      unless_done(manager, manager.start)
+      manager.start
+      try_to_finish manager
     end
 
     def handle_event(event)
@@ -198,7 +199,8 @@ module Dynflow
     def work_finished(work)
       manager = @execution_plan_managers[work.execution_plan_id]
       return [] unless manager # skip case when getting event from execution plan that is not running anymore
-      unless_done(manager, manager.what_is_next(work))
+      manager.work_finished(work)
+      try_to_finish manager
     end
 
     # called when there was an unhandled exception during the execution
@@ -227,6 +229,12 @@ module Dynflow
         @execution_plan_managers.values.each do |manager|
           finish_manager(manager)
         end
+      end
+    end
+
+    def try_to_finish(manager)
+      if manager.done?
+        try_to_rescue(manager) || finish_manager(manager)
       end
     end
 
@@ -295,7 +303,7 @@ module Dynflow
       end
 
       @execution_plan_managers[execution_plan_id] =
-          ExecutionPlanManager.new(@world, execution_plan, finished)
+          ExecutionPlanManager.new(@world, execution_plan, finished, self)
     rescue Dynflow::Error => e
       finished.reject e
       nil
