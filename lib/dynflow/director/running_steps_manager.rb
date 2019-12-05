@@ -16,7 +16,6 @@ module Dynflow
         @events        = QueueHash.new(Integer, Director::Event)
         @events_by_request_id = {}
         @step_futures = {}
-        @mutex = Mutex.new
       end
 
       def terminate
@@ -29,33 +28,32 @@ module Dynflow
       end
 
       def add(step, work, done)
-        @mutex.synchronize do
-          Type! step, ExecutionPlan::Steps::RunStep
-          @running_steps[step.id] = step
-          # we make sure not to run any event when the step is still being executed
-          @work_items.push(step.id, work)
-          @step_futures[step.id] = done
-          self
-        end
+        Type! step, ExecutionPlan::Steps::RunStep
+        @running_steps[step.id] = step
+        # we make sure not to run any event when the step is still being executed
+        @work_items.push(step.id, work)
+        @step_futures[step.id] = done
+        self
       end
 
       # @returns [TrueClass|FalseClass, Array<WorkItem>]
       def done(step)
         Type! step, ExecutionPlan::Steps::RunStep
         # update the step based on the latest finished work
-        @mutex.synchronize do
-          @running_steps[step.id] = step
+        @running_steps[step.id] = step
 
-          @work_items.shift(step.id).tap do |work|
-            finish_event_result(work) { |f| f.fulfill true }
-          end
-
-          return [create_next_event_work_item(step)].compact if step.state == :suspended
-          discard_step_items step
-          @running_steps.delete(step.id)
-          @step_futures[step.id].fulfill true
-          []
+        @work_items.shift(step.id).tap do |work|
+          finish_event_result(work) { |f| f.fulfill true }
         end
+
+        if step.state == :suspended
+          next_steps = [create_next_event_work_item(step)].compact
+          return next_steps
+        end
+        discard_step_items step
+        @running_steps.delete(step.id)
+        @step_futures[step.id].fulfill true
+        []
       end
 
       def discard_step_items(step)
@@ -77,33 +75,25 @@ module Dynflow
       end
 
       def try_to_terminate
-        @mutex.synchronize do
-          @running_steps.delete_if do |_, step|
-            step.state != :running
-          end
-          return @running_steps.empty?
+        @running_steps.delete_if do |_, step|
+          step.state != :running
         end
+        return @running_steps.empty?
       end
 
       # @returns [Array<WorkItem>]
       def event(event)
         Type! event, Event
 
-        @mutex.synchronize do
-          step = @running_steps[event.step_id]
-          unless step
-            event.result.reject UnprocessableEvent.new('step is not suspended, it cannot process events')
-            return []
-          end
-
-          can_run_event = @work_items.empty?(step.id)
-          unless can_run_event
-            require 'pry'; binding.pry
-          end
-          @events_by_request_id[event.request_id] = event
-          @events.push(step.id, event)
-          [create_next_event_work_item(step)] if can_run_event
+        step = @running_steps[event.step_id]
+        unless step
+          event.result.reject UnprocessableEvent.new('step is not suspended, it cannot process events')
+          return []
         end
+
+        @events_by_request_id[event.request_id] = event
+        @events.push(step.id, event)
+        [create_next_event_work_item(step)] if @work_items.empty?(step.id)
       end
 
       # turns the first event from the queue to the next work item to work on

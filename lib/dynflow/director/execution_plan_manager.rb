@@ -42,7 +42,7 @@ module Dynflow
         when StepWorkItem
           step = work.step
           update_steps([step])
-          @running_steps_manager.done(step)
+          @director.executor.handle_work @running_steps_manager.done(step)
         when FinalizeWorkItem
           if work.finalize_steps_data
             steps = work.finalize_steps_data.map do |step_data|
@@ -102,8 +102,8 @@ module Dynflow
         raise 'run phase already started' if @run_manager
         manager = FlowManager.new(execution_plan, execution_plan.run_flow)
         @run_manager = manager.promise_flow(execution_plan.run_flow) do |done, step_id|
-          puts "EXECUTING #{step_id}"
           step = execution_plan.steps[step_id]
+          done.fulfill true if [:stopped, :skipped].include? step.state
           work_item = prepare_next_step(step, done)
           @director.executor.handle_work(work_item)
         end

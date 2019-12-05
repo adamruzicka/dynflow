@@ -18,7 +18,11 @@ module Dynflow
 
       def shift(key)
         return nil unless present? key
-        @stash[key].shift.tap { @stash.delete(key) if @stash[key].empty? }
+        @stash[key].shift.tap do |value|
+          if @stash[key].empty?
+            @stash.delete(key)
+          end
+        end
       end
 
       def present?(key)
