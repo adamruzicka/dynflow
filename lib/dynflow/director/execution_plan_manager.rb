@@ -22,18 +22,19 @@ module Dynflow
 
       def start
         raise "The future was already set" if @future.resolved?
-        start_run or start_finalize or finish
+        start_run or start_finalize or no_work
       end
 
       def restart
+        @running_steps_manager.restart
         @run_manager = nil
         @finalize_manager = nil
         start
       end
 
-      def prepare_next_step(step, done)
+      def prepare_next_step(step, done, item_future)
         StepWorkItem.new(execution_plan.id, step, step.queue, @world.id).tap do |work|
-          @running_steps_manager.add(step, work, done)
+          @running_steps_manager.add(step, work, done, item_future)
         end
       end
 
@@ -42,7 +43,7 @@ module Dynflow
         when StepWorkItem
           step = work.step
           update_steps([step])
-          @director.executor.handle_work @running_steps_manager.done(step)
+          @running_steps_manager.done(step)
         when FinalizeWorkItem
           if work.finalize_steps_data
             steps = work.finalize_steps_data.map do |step_data|
@@ -52,7 +53,7 @@ module Dynflow
           end
           raise "Finalize work item without @finalize_manager ready" unless @finalize_manager
           @finalize_manager = :done
-          finish
+          no_work
         else
           raise "Unexpected work #{work}"
         end
@@ -63,7 +64,20 @@ module Dynflow
         unless event.execution_plan_id == @execution_plan.id
           raise "event #{event.inspect} doesn't belong to plan #{@execution_plan.id}"
         end
-        @director.executor.handle_work(@running_steps_manager.event(event))
+        @running_steps_manager.next(event.step_id) do |f|
+          f.then { @director.executor.handle_work(@running_steps_manager.event(event)) }
+           .on_rejection do |reason|
+            return if reason == :restart
+            if reason == :termination
+              w.event.result.reject UnprocessableEvent.new('dropping due to termination')
+            else
+              @world.logger.debug "step #{step.execution_plan_id}:#{step.id} dropping event #{event.request_id}/#{event}"
+              if event.result
+                event.result.reject UnprocessableEvent.new("Message dropped").tap { |e| e.set_backtrace(caller) }
+              end
+            end
+          end
+        end
       end
 
       def done?
@@ -80,21 +94,8 @@ module Dynflow
         steps.each { |step| execution_plan.steps[step.id] = step }
       end
 
-      def compute_next_from_step(step)
-        raise "run manager not set" unless @run_manager
-        raise "run manager already done" if @run_manager.fulfilled?
-
-        next_steps = @run_manager.what_is_next(step)
-        if @run_manager.fulfilled?
-          start_finalize or finish
-        else
-          next_steps.map { |s| prepare_next_step(s) }
-        end
-      end
-
       def no_work
         raise "No work but not done" unless done?
-        []
       end
 
       def start_run
@@ -103,12 +104,14 @@ module Dynflow
         manager = FlowManager.new(execution_plan, execution_plan.run_flow)
         @run_manager = manager.promise_flow(execution_plan.run_flow) do |done, step_id|
           step = execution_plan.steps[step_id]
-          done.fulfill true if [:stopped, :skipped].include? step.state
-          work_item = prepare_next_step(step, done)
+          if [:stopped, :skipped].include? step.state
+            done.fulfill true
+            return
+          end
+          work_item = prepare_next_step(step, done, Concurrent::Promises.resolvable_future)
           @director.executor.handle_work(work_item)
         end
         @run_manager.then { @director.executor.handle_work start_finalize }
-        # @run_manager.start.map { |s| prepare_next_step(s) }.tap { |a| raise if a.empty? }
       end
 
       def start_finalize
@@ -117,11 +120,6 @@ module Dynflow
         @finalize_manager = :started
         [FinalizeWorkItem.new(execution_plan.id, execution_plan.finalize_steps.first.queue, @world.id)]
       end
-
-      def finish
-        return no_work
-      end
-
     end
   end
 end

@@ -15,24 +15,32 @@ module Dynflow
         # to handle potential updates of the step object (that is part of the event)
         @events        = QueueHash.new(Integer, Director::Event)
         @events_by_request_id = {}
+        # Mapping between step ids and futures, when the future is fulfilled, then the step is done
         @step_futures = {}
+        @running_step_futures = Hash.new { |h,k| h[k] = [] }
       end
 
       def terminate
-        pending_work = @work_items.clear.values.flatten(1)
-        pending_work.each do |w|
-          if EventWorkItem === w
-            w.event.result.reject UnprocessableEvent.new("dropping due to termination")
-          end
+        abort :termination
+      end
+      
+      def restart
+        abort :restart
+      end
+      
+      def abort(reason)
+        @running_step_futures.keys.each do |step_id|
+          pending_step_future(step_id)&.reject reason
+          @step_futures.delete(step_id)&.reject reason
         end
       end
 
-      def add(step, work, done)
+      def add(step, work, done, item_future)
         Type! step, ExecutionPlan::Steps::RunStep
         @running_steps[step.id] = step
         # we make sure not to run any event when the step is still being executed
-        @work_items.push(step.id, work)
         @step_futures[step.id] = done
+        @running_step_futures[step.id] << item_future
         self
       end
 
@@ -42,36 +50,16 @@ module Dynflow
         # update the step based on the latest finished work
         @running_steps[step.id] = step
 
-        @work_items.shift(step.id).tap do |work|
-          finish_event_result(work) { |f| f.fulfill true }
-        end
-
+        item_future = pending_step_future(step.id)
         if step.state == :suspended
-          next_steps = [create_next_event_work_item(step)].compact
-          return next_steps
+          item_future.fulfill true
+          return
         end
-        discard_step_items step
         @running_steps.delete(step.id)
-        @step_futures[step.id].fulfill true
-        []
-      end
-
-      def discard_step_items(step)
-        while (work = @work_items.shift(step.id))
-          @world.logger.debug "step #{step.execution_plan_id}:#{step.id} dropping event #{work.request_id}/#{work.event}"
-          finish_event_result(work) do |f|
-            f.reject UnprocessableEvent.new("Message dropped").tap { |e| e.set_backtrace(caller) }
-          end
-        end
-        while (event = @events.shift(step.id))
-          @world.logger.debug "step #{step.execution_plan_id}:#{step.id} dropping event #{event.request_id}/#{event}"
-          if event.result
-            event.result.reject UnprocessableEvent.new("Message dropped").tap { |e| e.set_backtrace(caller) }
-          end
-        end
-        unless @work_items.empty?(step.id) && @events.empty?(step.id)
-          raise "Unexpected item in @work_items (#{@work_items.inspect}) or @events (#{@events.inspect})"
-        end
+        item_future&.reject false
+        future = @step_futures.delete step.id
+        @running_step_futures.delete step.id
+        future.fulfill true
       end
 
       def try_to_terminate
@@ -91,27 +79,21 @@ module Dynflow
           return []
         end
 
-        @events_by_request_id[event.request_id] = event
-        @events.push(step.id, event)
-        [create_next_event_work_item(step)] if @work_items.empty?(step.id)
+        [create_next_event_work_item(step, event)]
       end
 
       # turns the first event from the queue to the next work item to work on
-      def create_next_event_work_item(step)
-        event = @events.shift(step.id)
-        return unless event
-        work = EventWorkItem.new(event.request_id, event.execution_plan_id, step, event.event, step.queue, @world.id)
-        @work_items.push(step.id, work)
-        work
+      def create_next_event_work_item(step, event)
+        EventWorkItem.new(event.request_id, event.execution_plan_id, step, event.event, step.queue, @world.id)
+      end
+      
+      def next(step_id)
+        future = yield (pending_step_future(step_id) || @running_step_futures[step_id].last)
+        @running_step_futures[step_id] << future
       end
 
-      # @yield [Concurrent.resolvable_future] in case the work item has an result future assigned
-      # and deletes the tracked event
-      def finish_event_result(work_item)
-        return unless EventWorkItem === work_item
-        if event = @events_by_request_id.delete(work_item.request_id)
-          yield event.result if event.result
-        end
+      def pending_step_future(step_id)
+        @running_step_futures[step_id].find { |f| !(f.fulfilled? || f.rejected?) }
       end
     end
   end
