@@ -5,7 +5,7 @@ module Dynflow
       include Algebrick::TypeCheck
       include Algebrick::Matching
 
-      attr_reader :execution_plan, :future
+      attr_reader :execution_plan, :future, :finalize_manager
 
       def initialize(world, execution_plan, future, director)
         @world                 = Type! world, World
@@ -52,7 +52,7 @@ module Dynflow
             update_steps(steps)
           end
           raise "Finalize work item without @finalize_manager ready" unless @finalize_manager
-          @finalize_manager = :done
+          finalize_manager.fulfill true
           no_work
         else
           raise "Unexpected work #{work}"
@@ -60,13 +60,15 @@ module Dynflow
       end
 
       def event(event)
+        puts "RECEIVED EVENT #{event}"
         Type! event, Event
         unless event.execution_plan_id == @execution_plan.id
           raise "event #{event.inspect} doesn't belong to plan #{@execution_plan.id}"
         end
         @running_steps_manager.next(event.step_id) do |f|
+          return if f.nil?
           f.then { @director.executor.handle_work(@running_steps_manager.event(event)) }
-           .on_rejection do |reason|
+          f.on_rejection do |reason|
             return if reason == :restart
             if reason == :termination
               w.event.result.reject UnprocessableEvent.new('dropping due to termination')
@@ -81,7 +83,7 @@ module Dynflow
       end
 
       def done?
-        (!@run_manager || @run_manager.fulfilled?) && (!@finalize_manager || @finalize_manager == :done)
+        (!@run_manager || @run_manager.fulfilled? || @run_manager.rejected?) && (!@finalize_manager || @finalize_manager.fulfilled?)
       end
 
       def terminate
@@ -101,8 +103,7 @@ module Dynflow
       def start_run
         return if execution_plan.run_flow.empty?
         raise 'run phase already started' if @run_manager
-        manager = FlowManager.new(execution_plan, execution_plan.run_flow)
-        @run_manager = manager.promise_flow(execution_plan.run_flow) do |done, step_id|
+        @run_manager = FlowManager.promise_flow(execution_plan.run_flow) do |done, step_id|
           step = execution_plan.steps[step_id]
           if [:stopped, :skipped].include? step.state
             done.fulfill true
@@ -111,14 +112,19 @@ module Dynflow
           work_item = prepare_next_step(step, done, Concurrent::Promises.resolvable_future)
           @director.executor.handle_work(work_item)
         end
-        @run_manager.then { @director.executor.handle_work start_finalize }
+        @run_manager.then { start_finalize }
+        @run_manager.on_rejection { @director.try_to_finish(self) }
       end
 
       def start_finalize
-        return if execution_plan.finalize_flow.empty?
         raise 'finalize phase already started' if @finalize_manager
-        @finalize_manager = :started
-        [FinalizeWorkItem.new(execution_plan.id, execution_plan.finalize_steps.first.queue, @world.id)]
+        @finalize_manager = Concurrent::Promises.resolvable_future
+        @finalize_manager.on_resolution { @director.try_to_finish self }
+        if execution_plan.finalize_flow.empty?
+          @finalize_manager.fulfill true
+          return
+        end
+        @director.executor.handle_work  [FinalizeWorkItem.new(execution_plan.id, execution_plan.finalize_steps.first.queue, @world.id)]
       end
     end
   end

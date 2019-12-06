@@ -124,7 +124,7 @@ module Dynflow
           step_id = @execution_plan.finalize_flow.all_step_ids.first
           action_class = @execution_plan.steps[step_id].action_class
           world.middleware.execute(:finalize_phase, action_class, @execution_plan) do
-            @flow_manager.promise_flow(@execution_plan.finalize_flow) do |done, step_id|
+            FlowManager.promise_flow(@execution_plan.finalize_flow) do |done, step_id|
               @execution_plan.steps[step_id].execute
               done.fulfill true
             end.wait
@@ -141,7 +141,6 @@ module Dynflow
       end
 
       def reset_finalize_steps
-        @flow_manager = FlowManager.new(@execution_plan, @execution_plan.finalize_flow)
         finalize_steps.each do |step|
           step.state = :pending if [:success, :error].include? step.state
         end
@@ -156,11 +155,8 @@ module Dynflow
       end
     end
 
-    require 'dynflow/director/queue_hash'
-    require 'dynflow/director/sequence_cursor'
     require 'dynflow/director/flow_manager'
     require 'dynflow/director/execution_plan_manager'
-    require 'dynflow/director/sequential_manager'
     require 'dynflow/director/running_steps_manager'
 
     attr_reader :logger, :executor
@@ -200,7 +196,7 @@ module Dynflow
       manager = @execution_plan_managers[work.execution_plan_id]
       return [] unless manager # skip case when getting event from execution plan that is not running anymore
       manager.work_finished(work)
-      try_to_finish manager
+      try_to_finish manager if manager.finalize_manager
     end
 
     # called when there was an unhandled exception during the execution

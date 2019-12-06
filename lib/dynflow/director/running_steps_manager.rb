@@ -9,12 +9,6 @@ module Dynflow
       def initialize(world)
         @world         = Type! world, World
         @running_steps = {}
-        # enqueued work items by step id
-        @work_items    = QueueHash.new(Integer, WorkItem)
-        # enqueued events by step id - we delay creating work items from events until execution time
-        # to handle potential updates of the step object (that is part of the event)
-        @events        = QueueHash.new(Integer, Director::Event)
-        @events_by_request_id = {}
         # Mapping between step ids and futures, when the future is fulfilled, then the step is done
         @step_futures = {}
         @running_step_futures = Hash.new { |h,k| h[k] = [] }
@@ -52,14 +46,18 @@ module Dynflow
 
         item_future = pending_step_future(step.id)
         if step.state == :suspended
-          item_future.fulfill true
+          item_future&.fulfill true
           return
         end
         @running_steps.delete(step.id)
         item_future&.reject false
         future = @step_futures.delete step.id
         @running_step_futures.delete step.id
-        future.fulfill true
+        if [:success, :skipped].include? step.state
+          future.fulfill true
+        else
+          future.reject false
+        end
       end
 
       def try_to_terminate
@@ -88,8 +86,9 @@ module Dynflow
       end
       
       def next(step_id)
-        future = yield (pending_step_future(step_id) || @running_step_futures[step_id].last)
-        @running_step_futures[step_id] << future
+        last = @running_step_futures[step_id].last
+        @running_step_futures[step_id] << Concurrent::Promises.resolvable_future
+        yield last
       end
 
       def pending_step_future(step_id)
