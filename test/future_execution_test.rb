@@ -178,7 +178,7 @@ module Dynflow
         let(:args) { %w(arg1 arg2) }
         let(:serializer) { Dynflow::Serializers::Noop.new(nil, args) }
         let(:delayed_plan) do
-          Dynflow::DelayedPlan.new(Dynflow::World.allocate, 'an uuid', nil, nil, serializer, false)
+          Dynflow::DelayedPlan.new(Dynflow::World.allocate, 'an uuid', nil, nil, serializer, false, false)
         end
 
         it "allows access to serializer's args" do

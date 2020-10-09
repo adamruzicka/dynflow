@@ -46,6 +46,7 @@ module Dynflow
 
       def process(delayed_plans, check_time)
         processed_plan_uuids = []
+        dispatched_plan_uuids = []
         delayed_plans.each do |plan|
           next if plan.frozen
           fix_plan_state(plan)
@@ -53,25 +54,22 @@ module Dynflow
             if plan.execution_plan.state != :scheduled
               # in case the previous process was terminated after running the plan, but before deleting the delayed plan record.
               @logger.info("Execution plan #{plan.execution_plan_uuid} is expected to be in 'scheduled' state, was '#{plan.execution_plan.state}', skipping")
-            elsif !plan.start_before.nil? && plan.start_before < check_time
-              @logger.debug "Failing plan #{plan.execution_plan_uuid}"
-              plan.timeout
+              processed_plan_uuids << plan.execution_plan_uuid
             else
               @logger.debug "Executing plan #{plan.execution_plan_uuid}"
-              Executors.run_user_code do
-                plan.plan
-                plan.execute
-              end
+              world.plan_request(plan.execution_plan_uuid)
+              dispatched_plan_uuids << plan.execution_plan_uuid
             end
-            processed_plan_uuids << plan.execution_plan_uuid
           end
         end
+        world.persistence.mark_delayed_plans_as_planning(:execution_plan_uuid => dispatched_plan_uuids) unless dispatched_plan_uuids.empty?
         world.persistence.delete_delayed_plans(:execution_plan_uuid => processed_plan_uuids) unless processed_plan_uuids.empty?
       end
 
       private
 
       # handle the case, where the process was termintated while planning was in progress before
+      # TODO: Doing execution plan updates in orchestrator is bad
       def fix_plan_state(plan)
         if plan.execution_plan.state == :planning
           @logger.info("Execution plan #{plan.execution_plan_uuid} is expected to be in 'scheduled' state, was '#{plan.execution_plan.state}', auto-fixing")

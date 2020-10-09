@@ -260,7 +260,8 @@ module Dynflow
                                      delay_options[:start_at],
                                      delay_options.fetch(:start_before, nil),
                                      serializer,
-                                     delay_options[:frozen] || false)
+                                     delay_options[:frozen] || false,
+                                     delay_options[:planning] || false)
       persistence.save_delayed_plan(delayed_plan)
     ensure
       update_state(error? ? :stopped : :scheduled)
