@@ -137,7 +137,7 @@ module Dynflow
 
       def mark_delayed_plans_as_planning(plan_uuids)
         table(:delayed)
-          .where(:execution_plan_uuid => plan_uuids)
+          .where(plan_uuids)
           .update(:planning => true)
       end
 
