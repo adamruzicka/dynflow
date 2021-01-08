@@ -20,37 +20,67 @@ module Dynflow
         execution_time:    plan.execution_time,
         real_time:         plan.real_time,
         execution_history: prepare_execution_history(plan.execution_history),
-        plan_phase:        prepare_step(plan, plan.root_plan_step, :plan),
-        run_phase:         prepare_flow(plan, plan.run_flow, :run),
-        finalize_phase:    prepare_flow(plan, plan.finalize_flow, :finalize),
+        plan_phase:        prepare_plan_phase(plan, plan.root_plan_step),
+        run_phase:         prepare_flow(plan, plan.run_flow),
+        finalize_phase:    prepare_flow(plan, plan.finalize_flow),
+        steps:             plan.steps.values.map { |step| prepare_step(plan, step) },
+        actions:           plan.actions.map { |action| prepare_action(action) },
         delay_record:      plan.delay_record && plan.delay_record.to_hash
       }
     end
 
     private
 
-    def prepare_step(execution_plan, step, phase)
-      raise "Unexpected phase '#{phase}'" unless [:plan, :run, :finalize].include?(phase)
-      action = execution_plan.actions.find { |a| a.public_send(:"#{phase}_step_id") == step.id }
-      base = {
+    def prepare_action(action)
+      {
+        :id => action.id,
+        :label => action.label,
+        :plan_step_id => action.plan_step_id,
+        :run_step_id => action.run_step_id,
+        :finalize_step_id => action.finalize_step_id,
+        :input => action.input.to_hash,
+        :output => action.output.to_hash
+      }
+    end
+
+    def prepare_plan_phase(execution_plan, step)
+      base = { :id => step.id }
+      if step.children.any?
+        base.merge!(
+          :children => step.children.map do |step_id|
+            step = execution_plan.steps[step_id]
+            prepare_plan_phase(execution_plan, step)
+          end
+        )
+      end
+      base
+    end
+
+    def prepare_step(execution_plan, step)
+      action = execution_plan.actions.find { |a| a.id == step.action_id }
+      {
         id:             step.id,
+        label:          action.label,
+        phase:          step_phase(step),
+        action_id:      step.action_id,
         state:          step.state,
         queue:          step.queue,
         started_at:     format_time(step.started_at),
         ended_at:       format_time(step.ended_at),
         real_time:      step.real_time,
         execution_time: step.execution_time,
-        label:          action.label,
-        input:          action.input.to_hash,
-        output:         action.output.to_hash
       }
-      if phase == :plan
-        base[:children] = step.children.map do |step_id|
-          step = execution_plan.steps[step_id]
-          prepare_step(execution_plan, step, phase)
-        end
+    end
+
+    def step_phase(step)
+      case step
+      when Dynflow::ExecutionPlan::Steps::PlanStep
+        'plan'
+      when Dynflow::ExecutionPlan::Steps::RunStep
+        'run'
+      when Dynflow::ExecutionPlan::Steps::FinalizeStep
+        'finalize'
       end
-      base
     end
 
     def prepare_execution_history(history)
@@ -80,15 +110,14 @@ module Dynflow
       end
     end
 
-    def prepare_flow(execution_plan, flow, phase)
+    def prepare_flow(execution_plan, flow)
       case flow
       when Dynflow::Flows::Sequence
-        { type: 'sequence', children: flow.flows.map { |flow| prepare_flow(execution_plan, flow, phase) } }
+        { type: 'sequence', children: flow.flows.map { |flow| prepare_flow(execution_plan, flow) } }
       when Dynflow::Flows::Concurrence
-        { type: 'concurrence', children: flow.flows.map { |flow| prepare_flow(execution_plan, flow, phase) } }
+        { type: 'concurrence', children: flow.flows.map { |flow| prepare_flow(execution_plan, flow) } }
       when Dynflow::Flows::Atom
-        step = execution_plan.steps[flow.step_id]
-        prepare_step(execution_plan, step, phase)
+        {:id => flow.step_id}
       end
     end
 
