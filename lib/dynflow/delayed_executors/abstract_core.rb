@@ -47,8 +47,9 @@ module Dynflow
       def process(delayed_plans, check_time)
         processed_plan_uuids = []
         dispatched_plan_uuids = []
+        planning_locks = world.coordinator.find_records(class: Coordinator::PlanningLock.name)
         delayed_plans.each do |plan|
-          next if plan.frozen
+          next if plan.frozen || locked_for_planning?(planning_locks, plan)
           fix_plan_state(plan)
           with_error_handling do
             if plan.execution_plan.state != :scheduled
@@ -62,7 +63,6 @@ module Dynflow
             end
           end
         end
-        world.persistence.mark_delayed_plans_as_planning(:execution_plan_uuid => dispatched_plan_uuids) unless dispatched_plan_uuids.empty?
         world.persistence.delete_delayed_plans(:execution_plan_uuid => processed_plan_uuids) unless processed_plan_uuids.empty?
       end
 
@@ -76,6 +76,10 @@ module Dynflow
           plan.execution_plan.set_state(:scheduled, true)
           plan.execution_plan.save
         end
+      end
+
+      def locked_for_planning?(planning_locks, plan)
+        planning_locks.any? { |lock| lock.execution_plan_id == plan.execution_plan_uuid }
       end
     end
   end

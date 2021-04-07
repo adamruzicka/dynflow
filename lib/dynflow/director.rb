@@ -111,13 +111,16 @@ module Dynflow
     class PlanningWorkItem < WorkItem
       def execute
         plan = world.persistence.load_delayed_plan(execution_plan_id)
+        return if plan.nil? || plan.execution_plan.state != :scheduled
 
         if !plan.start_before.nil? && plan.start_before < Time.now.utc()
           plan.timeout
           return
         end
 
-        plan.plan
+        world.coordinator.acquire(Coordinator::PlanningLock.new(world, plan.execution_plan_uuid)) do
+          plan.plan
+        end
         plan.execute
       rescue => e
         world.logger.warn e.message

@@ -306,11 +306,11 @@ module Dynflow
           it 'finds plans with start_before in past' do
             start_time = Time.now.utc
             prepare_and_save_plans
-            adapter.save_delayed_plan('plan1', :execution_plan_uuid => 'plan1', :frozen => false, :planning => false, :start_at => format_time(start_time + 60),
+            adapter.save_delayed_plan('plan1', :execution_plan_uuid => 'plan1', :frozen => false, :start_at => format_time(start_time + 60),
                                       :start_before => format_time(start_time - 60))
-            adapter.save_delayed_plan('plan2', :execution_plan_uuid => 'plan2', :frozen => false, :planning => false, :start_at => format_time(start_time - 60))
-            adapter.save_delayed_plan('plan3', :execution_plan_uuid => 'plan3', :frozen => false, :planning => false, :start_at => format_time(start_time + 60))
-            adapter.save_delayed_plan('plan4', :execution_plan_uuid => 'plan4', :frozen => false, :planning => false, :start_at => format_time(start_time - 60),
+            adapter.save_delayed_plan('plan2', :execution_plan_uuid => 'plan2', :frozen => false, :start_at => format_time(start_time - 60))
+            adapter.save_delayed_plan('plan3', :execution_plan_uuid => 'plan3', :frozen => false, :start_at => format_time(start_time + 60))
+            adapter.save_delayed_plan('plan4', :execution_plan_uuid => 'plan4', :frozen => false, :start_at => format_time(start_time - 60),
                                       :start_before => format_time(start_time - 60))
             plans = adapter.find_past_delayed_plans(start_time)
             _(plans.length).must_equal 3
@@ -322,9 +322,9 @@ module Dynflow
             prepare_and_save_plans
 
             adapter.save_delayed_plan('plan1', :execution_plan_uuid => 'plan1', :frozen => false, :start_at => format_time(start_time + 60),
-                                      :start_before => format_time(start_time - 60), :planning => false)
+                                      :start_before => format_time(start_time - 60))
             adapter.save_delayed_plan('plan2', :execution_plan_uuid => 'plan2', :frozen => true, :start_at => format_time(start_time + 60),
-                                      :start_before => format_time(start_time - 60), :planning => false)
+                                      :start_before => format_time(start_time - 60))
 
             plans = adapter.find_past_delayed_plans(start_time)
             _(plans.length).must_equal 1

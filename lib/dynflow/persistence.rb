@@ -86,10 +86,6 @@ module Dynflow
       end
     end
 
-    def mark_delayed_plans_as_planning(uuids)
-      adapter.mark_delayed_plans_as_planning(uuids)
-    end
-
     def delete_delayed_plans(filters, batch_size = 1000)
       adapter.delete_delayed_plans(filters, batch_size)
     end
