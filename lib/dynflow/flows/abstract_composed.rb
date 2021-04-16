@@ -12,6 +12,8 @@ module Dynflow
       end
 
       def encode
+        return if flows.empty?
+
         [Registry.encode(self)] + flows.map(&:encode)
       end
 

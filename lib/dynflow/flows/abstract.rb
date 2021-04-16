@@ -42,6 +42,7 @@ module Dynflow
         if data.is_a? Integer
           Flows::Atom.new(data)
         else
+          data = ['C'] if data.nil?
           kind, *subflows = data
           Registry.decode(kind).new(subflows.map { |subflow| self.decode(subflow) })
         end
