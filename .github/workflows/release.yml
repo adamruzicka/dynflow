@@ -35,7 +35,7 @@ jobs:
             --file /tmp/dynflow-expand-${VERSION}.tar.gz \
             --transform s/^\./dynflow-expand-${VERSION}/ \
             . && mv /tmp/dynflow-expand-${VERSION}.tar.gz .
-          sudo mv *.tar.gz dist/
+          mv *.tar.gz ../../dist/
         env:
           VERSION: '${{ steps.tagName.outputs.tag }}'
       - name: Upload binaries to release
