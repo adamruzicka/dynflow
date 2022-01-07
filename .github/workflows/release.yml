@@ -22,12 +22,13 @@ jobs:
         uses: actions/checkout@v2
       - name: Generate build files
         uses: thatisuday/go-cross-build@v1.1.0
+        working-directory: ./extras/expand
         with:
             platforms: 'linux/amd64'
-            package: 'extras/expand'
+            package: ''
             name: 'dynflow-expand-${{ steps.tagName.outputs.tag }}'
             compress: 'true'
-            dest: 'dist'
+            dest: '../../dist'
       - name: Generate distribution tarball
         run: |
           cd extras/expand
