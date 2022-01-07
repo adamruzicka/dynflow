@@ -10,7 +10,7 @@ on:
 # workflow tasks
 jobs:
   generate:
-    name: Generate cross-platform builds
+    name: Generate build artifacts
     runs-on: ubuntu-latest
     steps:
       - uses: olegtarasov/get-tag@v2.1
@@ -32,9 +32,9 @@ jobs:
           go mod vendor
           tar --create \
             --gzip \
-            --file /tmp/dynflow-expand-$(VERSION).tar.gz \
-            --transform s/^\./dynflow-expand-$(VERSION)/ \
-            . && mv /tmp/dynflow-expand-$(VERSION).tar.gz .
+            --file /tmp/dynflow-expand-${VERSION}.tar.gz \
+            --transform s/^\./dynflow-expand-${VERSION}/ \
+            . && mv /tmp/dynflow-expand-${VERSION}.tar.gz .
           sudo mv *.tar.gz dist/
         env:
           VERSION: '${{ steps.tagName.outputs.tag }}'
