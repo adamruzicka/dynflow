@@ -4,7 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"os"
 )
