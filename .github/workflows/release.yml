@@ -21,14 +21,11 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
       - name: Generate build files
-        uses: thatisuday/go-cross-build@v1.1.0
-        working-directory: ./extras/expand
-        with:
-            platforms: 'linux/amd64'
-            package: ''
-            name: 'dynflow-expand-${{ steps.tagName.outputs.tag }}'
-            compress: 'true'
-            dest: '../../dist'
+        run: |
+          mkdir -p dist
+          cd extras/expand
+          go build
+          mv expand ../../dist/dynflow-expand-${{ steps.tagName.outputs.tag }}-x86_64
       - name: Generate distribution tarball
         run: |
           cd extras/expand
