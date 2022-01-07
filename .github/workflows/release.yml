@@ -24,18 +24,16 @@ jobs:
         run: |
           mkdir -p dist
           cd extras/expand
-          go build
-          mv expand ../../dist/dynflow-expand-${{ steps.tagName.outputs.tag }}-x86_64
+          go build -o ../../dist/dynflow-expand-${{ steps.tagName.outputs.tag }}-x86_64
       - name: Generate distribution tarball
         run: |
           cd extras/expand
           go mod vendor
           tar --create \
             --gzip \
-            --file /tmp/dynflow-expand-${VERSION}.tar.gz \
+            --file ../../dist/dynflow-expand-${VERSION}.tar.gz \
             --transform s/^\./dynflow-expand-${VERSION}/ \
-            . && mv /tmp/dynflow-expand-${VERSION}.tar.gz .
-          mv *.tar.gz ../../dist/
+            .
         env:
           VERSION: '${{ steps.tagName.outputs.tag }}'
       - name: Upload binaries to release
