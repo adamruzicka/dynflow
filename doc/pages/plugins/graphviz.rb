@@ -65,7 +65,7 @@ module Jekyll
       code
     end
 
-    def generate_svg code
+    def generate_svg(code)
       Open3.popen3(DOT_CMD) do |stdin, stdout, stderr|
         stdout.binmode
         stdin.print code
