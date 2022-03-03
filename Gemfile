@@ -26,7 +26,7 @@ group :mysql do
 end
 
 group :lint do
-  gem 'rubocop', '0.39.0'
+  gem 'rubocop', '~> 0.87'
 end
 
 group :memory_watcher do

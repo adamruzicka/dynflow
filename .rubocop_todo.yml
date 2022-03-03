@@ -23,7 +23,7 @@ Lint/AssignmentInCondition:
 # Cop supports --auto-correct.
 # Configuration parameters: AlignWith, SupportedStyles.
 # SupportedStyles: either, start_of_block, start_of_line
-Lint/BlockAlignment:
+Layout/BlockAlignment:
   Enabled: false
 
 # Offense count: 1
@@ -34,7 +34,7 @@ Lint/DuplicateMethods:
 # Cop supports --auto-correct.
 # Configuration parameters: AlignWith, SupportedStyles, AutoCorrect.
 # SupportedStyles: keyword, variable, start_of_line
-Lint/EndAlignment:
+Layout/EndAlignment:
   Enabled: false
 
 # Offense count: 6
@@ -97,7 +97,7 @@ Metrics/CyclomaticComplexity:
 # Offense count: 521
 # Configuration parameters: AllowHeredoc, AllowURI, URISchemes.
 # URISchemes: http, https
-Metrics/LineLength:
+Layout/LineLength:
   Max: 166
 
 # Offense count: 99
@@ -119,18 +119,8 @@ Metrics/ParameterLists:
 Metrics/PerceivedComplexity:
   Max: 11
 
-# Offense count: 16
-# Cop supports --auto-correct.
-Performance/RedundantBlockCall:
-  Enabled: false
-
-# Offense count: 4
-# Cop supports --auto-correct.
-Performance/TimesMap:
-  Enabled: false
-
 # Offense count: 8
-Style/AccessorMethodName:
+Naming/AccessorMethodName:
   Enabled: false
 
 # Offense count: 13
@@ -138,13 +128,6 @@ Style/AccessorMethodName:
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: prefer_alias, prefer_alias_method
 Style/Alias:
-  Enabled: false
-
-# Offense count: 1
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedHashRocketStyle, EnforcedColonStyle, EnforcedLastArgumentHashStyle, SupportedLastArgumentHashStyles.
-# SupportedLastArgumentHashStyles: always_inspect, always_ignore, ignore_implicit, ignore_explicit
-Style/AlignHash:
   Enabled: false
 
 # Offense count: 11
@@ -169,13 +152,6 @@ Style/BarePercentLiterals:
 # FunctionalMethods: let, let!, subject, watch
 # IgnoredMethods: lambda, proc, it
 Style/BlockDelimiters:
-  Enabled: false
-
-# Offense count: 18
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles.
-# SupportedStyles: braces, no_braces, context_dependent
-Style/BracesAroundHashParameters:
   Enabled: false
 
 # Offense count: 13
@@ -208,12 +184,7 @@ Style/CommentAnnotation:
   Enabled: false
 
 # Offense count: 4
-Style/ConstantName:
-  Enabled: false
-
-# Offense count: 3
-# Cop supports --auto-correct.
-Style/DeprecatedHashMethods:
+Naming/ConstantName:
   Enabled: false
 
 # Offense count: 172
@@ -224,7 +195,7 @@ Style/Documentation:
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: leading, trailing
-Style/DotPosition:
+Layout/DotPosition:
   Enabled: false
 
 # Offense count: 3
@@ -245,45 +216,45 @@ Style/EmptyElse:
 # Offense count: 5
 # Cop supports --auto-correct.
 # Configuration parameters: AllowAdjacentOneLineDefs.
-Style/EmptyLineBetweenDefs:
+Layout/EmptyLineBetweenDefs:
   Enabled: false
 
 # Offense count: 1
 # Cop supports --auto-correct.
-Style/EmptyLinesAroundAccessModifier:
+Layout/EmptyLinesAroundAccessModifier:
   Enabled: false
 
 # Offense count: 91
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: empty_lines, no_empty_lines
-Style/EmptyLinesAroundBlockBody:
+Layout/EmptyLinesAroundBlockBody:
   Enabled: false
 
 # Offense count: 143
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: empty_lines, no_empty_lines
-Style/EmptyLinesAroundClassBody:
+Layout/EmptyLinesAroundClassBody:
   Enabled: false
 
 # Offense count: 2
 # Cop supports --auto-correct.
-Style/EmptyLinesAroundMethodBody:
+Layout/EmptyLinesAroundMethodBody:
   Enabled: false
 
 # Offense count: 52
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: empty_lines, no_empty_lines
-Style/EmptyLinesAroundModuleBody:
+Layout/EmptyLinesAroundModuleBody:
   Enabled: false
 
 # Offense count: 9
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles, IndentationWidth.
 # SupportedStyles: consistent, special_for_inner_method_call, special_for_inner_method_call_in_parentheses
-Style/FirstParameterIndentation:
+Layout/FirstParameterIndentation:
   Enabled: false
 
 # Offense count: 4
@@ -319,19 +290,6 @@ Style/IfInsideElse:
 Style/IfUnlessModifier:
   Enabled: false
 
-# Offense count: 4
-# Cop supports --auto-correct.
-# Configuration parameters: IndentationWidth.
-Style/IndentAssignment:
-  Enabled: false
-
-# Offense count: 2
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles, IndentationWidth.
-# SupportedStyles: special_inside_parentheses, consistent, align_braces
-Style/IndentHash:
-  Enabled: false
-
 # Offense count: 8
 # Cop supports --auto-correct.
 Style/Lambda:
@@ -351,7 +309,7 @@ Style/LineEndConcatenation:
 
 # Offense count: 3
 # Cop supports --auto-correct.
-Style/MethodCallParentheses:
+Style/MethodCallWithoutArgsParentheses:
   Enabled: false
 
 # Offense count: 2
@@ -374,7 +332,7 @@ Style/MultilineIfThen:
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles, IndentationWidth.
 # SupportedStyles: aligned, indented
-Style/MultilineMethodCallIndentation:
+Layout/MultilineMethodCallIndentation:
   Enabled: false
 
 # Offense count: 9
@@ -404,7 +362,7 @@ Style/Not:
   Enabled: false
 
 # Offense count: 2
-Style/OpMethod:
+Naming/BinaryOperatorParameterName:
   Enabled: false
 
 # Offense count: 5
@@ -428,7 +386,7 @@ Style/PerlBackrefs:
 # NamePrefix: is_, has_, have_
 # NamePrefixBlacklist: is_, has_, have_
 # NameWhitelist: is_a?
-Style/PredicateName:
+Naming/PredicateName:
   Enabled: false
 
 # Offense count: 6
@@ -496,38 +454,38 @@ Style/SingleLineMethods:
 # Offense count: 42
 # Cop supports --auto-correct.
 # Configuration parameters: AllowForAlignment.
-Style/SpaceAroundOperators:
+Layout/SpaceAroundOperators:
   Enabled: false
 
 # Offense count: 1
 # Cop supports --auto-correct.
-Style/SpaceBeforeComma:
+Layout/SpaceBeforeComma:
   Enabled: false
 
 # Offense count: 3
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles, EnforcedStyleForEmptyBraces, SpaceBeforeBlockParameters.
 # SupportedStyles: space, no_space
-Style/SpaceInsideBlockBraces:
+Layout/SpaceInsideBlockBraces:
   Enabled: false
 
 # Offense count: 7
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, EnforcedStyleForEmptyBraces, SupportedStyles.
 # SupportedStyles: space, no_space
-Style/SpaceInsideHashLiteralBraces:
+Layout/SpaceInsideHashLiteralBraces:
   Enabled: false
 
 # Offense count: 7
 # Cop supports --auto-correct.
-Style/SpaceInsideParens:
+Layout/SpaceInsideParens:
   Enabled: false
 
 # Offense count: 8
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: space, no_space
-Style/SpaceInsideStringInterpolation:
+Layout/SpaceInsideStringInterpolation:
   Enabled: false
 
 # Offense count: 9
@@ -565,13 +523,6 @@ Style/StringLiteralsInInterpolation:
 Style/SymbolProc:
   Enabled: false
 
-# Offense count: 6
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles.
-# SupportedStyles: final_newline, final_blank_line
-Style/TrailingBlankLines:
-  Enabled: false
-
 # Offense count: 2
 # Cop supports --auto-correct.
 # Configuration parameters: ExactNameMatch, AllowPredicates, AllowDSLWriters, IgnoreClassMethods, Whitelist.
@@ -581,13 +532,13 @@ Style/TrivialAccessors:
 
 # Offense count: 1
 # Cop supports --auto-correct.
-Style/UnneededCapitalW:
+Style/RedundantCapitalW:
   Enabled: false
 
 # Offense count: 2
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: snake_case, camelCase
-Style/VariableName:
+Naming/VariableName:
   Enabled: false
 
 # Offense count: 1
