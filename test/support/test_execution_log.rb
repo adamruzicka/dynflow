@@ -24,11 +24,13 @@ class TestExecutionLog
   end
 
   def self.setup
-    @run, @finalize = self.new, self.new
+    @run      = self.new
+    @finalize = self.new
   end
 
   def self.teardown
-    @run, @finalize = nil, nil
+    @run      = nil
+    @finalize = nil
   end
 
   def self.run

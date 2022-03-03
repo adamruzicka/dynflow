@@ -1283,3 +1283,9 @@ Style/ZeroLengthPredicate:
 # URISchemes: http, https
 Layout/LineLength:
   Max: 165
+
+Style/RaiseArgs:
+  Enabled: false
+
+Style/LambdaCall:
+  Enabled: false
