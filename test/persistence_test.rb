@@ -20,8 +20,8 @@ module Dynflow
          caller_execution_plan_id: nil,
          caller_action_id: nil,
          class: 'Dynflow::Action',
-         input: {key: 'value'},
-         output: {something: 'else'},
+         input: { key: 'value' },
+         output: { something: 'else' },
          plan_step_id: 1,
          run_step_id: 2,
          finalize_step_id: 3
@@ -236,7 +236,7 @@ module Dynflow
           it 'creates backup dir and produce backup including steps and actions' do
             prepare_plans_with_steps
             Dir.mktmpdir do |backup_dir|
-              _(adapter.delete_execution_plans({'uuid' => 'plan1'}, 100, backup_dir)).must_equal 1
+              _(adapter.delete_execution_plans({ 'uuid' => 'plan1' }, 100, backup_dir)).must_equal 1
               plans = CSV.read(backup_dir + "/execution_plans.csv", :headers => true)
               assert_equal 1, plans.count
               assert_equal 'plan1', plans.first.to_hash['uuid']
@@ -397,7 +397,7 @@ module Dynflow
           envelopes         = [client_envelope, executor_envelope]
 
           envelopes.each { |e| adapter.push_envelope(e) }
-          adapter.insert_coordinator_record({"class"=>"Dynflow::Coordinator::ExecutorWorld",
+          adapter.insert_coordinator_record({ "class"=>"Dynflow::Coordinator::ExecutorWorld",
                                              "id" => executor_world_id, "meta" => {}, "active" => true })
 
           assert_equal 1, adapter.prune_undeliverable_envelopes

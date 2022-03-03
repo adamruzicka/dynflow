@@ -51,7 +51,7 @@ module Dynflow
       attr_reader :queues
 
       def initialize
-        @queues = {:default => {}}
+        @queues = { :default => {} }
       end
 
       # Add a new queue to the configuration
