@@ -27,7 +27,7 @@ module OrchestrateEvented
 
   class CreateInfrastructure < Dynflow::Action
 
-    def plan(get_stuck = false)
+    def plan(get_stuck: false)
       sequence do
         concurrence do
           plan_action(CreateMachine, 'host1', 'db', get_stuck: get_stuck)
@@ -51,9 +51,9 @@ module OrchestrateEvented
                                  :disk => prepare_disk.output['path'])
       plan_action(AddIPtoHosts, :name => name, :ip => create_vm.output[:ip])
       plan_action(ConfigureMachine,
-                  :ip => create_vm.output[:ip],
-                  :profile => profile,
-                  :config_options => config_options)
+                  ip: create_vm.output[:ip],
+                  profile: profile,
+                  config_options: config_options)
       plan_self(:name => name)
     end
 
@@ -141,6 +141,10 @@ module OrchestrateEvented
       param :config_options
     end
 
+    def plan(ip:, profile:, config_options:)
+      plan_self(ip: ip, profile: profile, config_options: config_options)
+    end
+
     def run(event = nil)
       if event == Dynflow::Action::Cancellable::Cancel
         output[:message] = "I was cancelled but we don't care"
@@ -170,7 +174,7 @@ end
 
 if $0 == __FILE__
   ExampleHelper.world.trigger(OrchestrateEvented::CreateInfrastructure)
-  ExampleHelper.world.trigger(OrchestrateEvented::CreateInfrastructure, true)
+  ExampleHelper.world.trigger(OrchestrateEvented::CreateInfrastructure, get_stuck: true)
   puts example_description
   ExampleHelper.run_web_console
 end
