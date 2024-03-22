@@ -67,7 +67,11 @@ module Dynflow
       time = begin
                DateTime.strptime(string, TIME_FORMAT)
              rescue ArgumentError => _
-               DateTime.strptime(string, LEGACY_TIME_FORMAT)
+               begin
+                DateTime.strptime(string, LEGACY_TIME_FORMAT)
+               rescue ArgumentError => _
+                 Time.iso8601(string)
+               end
              end
 
       time.to_time.utc

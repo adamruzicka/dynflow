@@ -7,6 +7,7 @@ module Dynflow
       require 'dynflow/executors/parallel/core'
       # only load Sidekiq pieces when run in Sidekiq runtime (and the Sidekiq module is already loaded)
       require 'dynflow/executors/sidekiq/core' if defined? ::Sidekiq
+      require 'dynflow/executors/solid_queue/core' if defined? ::SolidQueue
 
       attr_reader :core
 

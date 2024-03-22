@@ -195,6 +195,9 @@ module Dynflow
         else
           if defined?(::Sidekiq) && Sidekiq.configure_server { |c| c[:dynflow_executor] }
             ::Dynflow::Executors::Sidekiq::Core
+          elsif defined?(::SolidQueue)
+            require 'dynflow/executors/solid_queue/core'
+            ::Dynflow::Executors::SolidQueue::Core
           else
             ::Dynflow::Executors::Parallel::Core
           end

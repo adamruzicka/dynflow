@@ -19,13 +19,14 @@ end
 # FIND change ids to uuid, uuid-<action_id>, uuid-<action_id-(plan, run, finalize)
 module Dynflow
   class << self
+    attr_writer :process_world
     # Return the world that representing this process - this is mainly used by
     # Sidekiq deployments, where there is a need for a global-level context.
     #
     # @return [Dynflow::World, nil]
     def process_world
       return @process_world if defined? @process_world
-      @process_world = Sidekiq.configure_server { |c| c.options[:dynflow_world] }
+      @process_world = Sidekiq.configure_server { |c| c.options[:dynflow_world] } if defined? ::Sidekiq
       raise "process world is not set" unless @process_world
       @process_world
     end
@@ -76,6 +77,7 @@ module Dynflow
 
   if defined? ::ActiveJob
     require 'dynflow/active_job/queue_adapter'
+    require 'dynflow/active_job/serializer'
 
     class Railtie < ::Rails::Railtie
       config.before_initialize do
