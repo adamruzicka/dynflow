@@ -30,8 +30,8 @@ module Dynflow
 
       def handle_work(work_item)
         work_item.execute
-        step = work_item.step if work_item.is_a?(Director::StepWorkItem)
-        plan_events(step && step.delayed_events) if step && step.delayed_events
+        delayed_events = work_item.delayed_events if work_item.is_a?(Director::StepWorkItem)
+        plan_events(delayed_events) if delayed_events
         @director.work_finished(work_item)
       end
 

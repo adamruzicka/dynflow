@@ -59,40 +59,56 @@ module Dynflow
     end
 
     class StepWorkItem < WorkItem
-      attr_reader :step
+      attr_reader :step_id
+      attr_accessor :delayed_events,
+      :state # One of :done, :suspended, :error
 
-      def initialize(execution_plan_id, step, queue, sender_orchestrator_id)
+      def initialize(execution_plan_id, step_id, queue, sender_orchestrator_id, delayed_events: [], state: :done)
         super(execution_plan_id, queue, sender_orchestrator_id)
-        @step = step
+        @step_id = step_id
+        @delayed_events = delayed_events
+        @state = state
       end
 
-      def execute
-        @step.execute(nil)
-      end
-
-      def to_hash
-        super.merge(step: step.to_hash)
+      def execute(event = nil)
+        step = world.persistence.load_step(execution_plan_id, step_id, world)
+        step.execute(event)
+        @delayed_events = step.delayed_events
+        @state = case
+        when step.state == :suspended
+          :suspended
+        when step.state == :error
+          :error
+        else
+          :done
+        end
       end
 
       def self.new_from_hash(hash, *_args)
         self.new(hash[:execution_plan_id],
-          Serializable.from_hash(hash[:step], hash[:execution_plan_id], Dynflow.process_world),
+          hash[:step_id],
           hash[:queue],
-          hash[:sender_orchestrator_id])
+          hash[:sender_orchestrator_id],
+          delayed_events: hash[:delayed_events],
+          state: hash[:state])
+      end
+
+      def to_hash
+        super.merge(delayed_events: @delayed_events, state: @state)
       end
     end
 
     class EventWorkItem < StepWorkItem
       attr_reader :event, :request_id
 
-      def initialize(request_id, execution_plan_id, step, event, queue, sender_orchestrator_id)
-        super(execution_plan_id, step, queue, sender_orchestrator_id)
+      def initialize(request_id, execution_plan_id, step_id, event, queue, sender_orchestrator_id, **kwargs)
+        super(execution_plan_id, step_id, queue, sender_orchestrator_id, **kwargs)
         @event = event
         @request_id = request_id
       end
 
-      def execute
-        @step.execute(@event)
+      def execute(event = @event)
+        super(@event)
       end
 
       def to_hash
@@ -102,10 +118,12 @@ module Dynflow
       def self.new_from_hash(hash, *_args)
         self.new(hash[:request_id],
           hash[:execution_plan_id],
-          Serializable.from_hash(hash[:step], hash[:execution_plan_id], Dynflow.process_world),
+          hash[:step_id],
           Dynflow.serializer.load(hash[:event]),
           hash[:queue],
-          hash[:sender_orchestrator_id])
+          hash[:sender_orchestrator_id],
+          delayed_events: hash[:delayed_events],
+          state: hash[:state])
       end
     end
 

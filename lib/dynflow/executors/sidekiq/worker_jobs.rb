@@ -15,8 +15,8 @@ module Dynflow
           rescue Errors::PersistenceError => e
             OrchestratorJobs::HandlePersistenceError.perform_async(e, work_item)
           ensure
-            step = work_item.step if work_item.is_a?(Director::StepWorkItem)
-            OrchestratorJobs::WorkerDone.perform_async(work_item, step && step.delayed_events)
+            delayed_events = work_item.delayed_events if work_item.is_a?(Director::StepWorkItem)
+            OrchestratorJobs::WorkerDone.perform_async(work_item, delayed_events)
           end
 
           private

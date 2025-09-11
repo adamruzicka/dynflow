@@ -16,11 +16,11 @@ module Dynflow
       end
 
       # @return [Set] of steps to continue with
-      def what_is_next(flow_step)
-        return [] if flow_step.state == :suspended
+      def what_is_next(flow_step_id, state)
+        return [] if state == :suspended
 
-        success = flow_step.state != :error
-        return cursor_index[flow_step.id].what_is_next(flow_step.id, success)
+        success = state != :error
+        return cursor_index[flow_step_id].what_is_next(flow_step_id, success)
       end
 
       # @return [Set] of steps to continue with

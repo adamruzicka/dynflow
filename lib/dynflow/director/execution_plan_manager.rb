@@ -39,8 +39,8 @@ module Dynflow
 
       def prepare_next_step(step_id)
         step = @execution_plan.steps[step_id]
-        StepWorkItem.new(execution_plan.id, step, step.queue, @world.id).tap do |work|
-          @running_steps_manager.add(step, work)
+        StepWorkItem.new(execution_plan.id, step_id, step.queue, @world.id).tap do |work|
+          @running_steps_manager.add(step_id, work)
         end
       end
 
@@ -50,17 +50,14 @@ module Dynflow
 
         case work
         when StepWorkItem
-          step = work.step
-          update_steps([step])
-          suspended, work = @running_steps_manager.done(step)
-          work = compute_next_from_step(step) unless suspended
-          work
+          suspended, next_work = @running_steps_manager.done(work.step_id, work.state)
+          next_work = compute_next_from_step(work.step_id, work.state) unless suspended
+          next_work
         when FinalizeWorkItem
           if work.finalize_steps_data
             steps = work.finalize_steps_data.map do |step_data|
               Serializable.from_hash(step_data, execution_plan.id, @world)
             end
-            update_steps(steps)
           end
           raise "Finalize work item without @finalize_manager ready" unless @finalize_manager
           @finalize_manager.done!
@@ -88,16 +85,12 @@ module Dynflow
 
       private
 
-      def update_steps(steps)
-        steps.each { |step| execution_plan.steps[step.id] = step }
-      end
-
-      def compute_next_from_step(step)
+      def compute_next_from_step(step_id, state)
         raise "run manager not set" unless @run_manager
         raise "run manager already done" if @run_manager.done?
         return [] if @halted
 
-        next_steps = @run_manager.what_is_next(step)
+        next_steps = @run_manager.what_is_next(step_id, state)
         if @run_manager.done?
           start_finalize or finish
         else

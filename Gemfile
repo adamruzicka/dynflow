@@ -43,3 +43,5 @@ end
 group :telemetry do
   gem 'statsd-instrument'
 end
+gem 'pry-remote'
+gem 'puma'

@@ -9,13 +9,14 @@ module Dynflow
 
       def initialize(world)
         @world         = Type! world, World
-        @running_steps = {}
+        @running_steps = Set.new
         # enqueued work items by step id
         @work_items    = QueueHash.new(Integer, WorkItem)
         # enqueued events by step id - we delay creating work items from events until execution time
         # to handle potential updates of the step object (that is part of the event)
         @events        = QueueHash.new(Integer, Director::Event)
         @events_by_request_id = {}
+        @step_queues = {}
         @halted = false
       end
 
@@ -32,51 +33,44 @@ module Dynflow
         @halted = true
       end
 
-      def add(step, work)
-        Type! step, ExecutionPlan::Steps::RunStep
-        @running_steps[step.id] = step
+      def add(step_id, work)
+        @step_queues[step_id] = work.queue
+        @running_steps << step_id
         # we make sure not to run any event when the step is still being executed
-        @work_items.push(step.id, work)
+        @work_items.push(step_id, work)
         self
       end
 
       # @returns [TrueClass|FalseClass, Array<WorkItem>]
-      def done(step)
-        Type! step, ExecutionPlan::Steps::RunStep
-        # update the step based on the latest finished work
-        @running_steps[step.id] = step
-
-        @work_items.shift(step.id).tap do |work|
+      def done(step_id, state)
+        @work_items.shift(step_id).tap do |work|
           finish_event_result(work) { |f| f.fulfill true }
         end
 
-        if step.state == :suspended
-          return true, [create_next_event_work_item(step)].compact
+        if state == :suspended
+          return true, [create_next_event_work_item(step_id)].compact
         else
-          while (work = @work_items.shift(step.id))
-            @world.logger.debug "step #{step.execution_plan_id}:#{step.id} dropping event #{work.request_id}/#{work.event}"
+          while (work = @work_items.shift(step_id))
+            @world.logger.debug "step #{work.execution_plan_id}:#{step_id} dropping event #{work.request_id}/#{work.event}"
             finish_event_result(work) do |f|
               f.reject(UnprocessableEvent.new("Message dropped").tap { |e| e.set_backtrace(caller) })
             end
           end
-          while (event = @events.shift(step.id))
-            @world.logger.debug "step #{step.execution_plan_id}:#{step.id} dropping event #{event.request_id}/#{event}"
+          while (event = @events.shift(step_id))
+            @world.logger.debug "step #{work.execution_plan_id}:#{step_id} dropping event #{event.request_id}/#{event}"
             if event.result
               event.result.reject(UnprocessableEvent.new("Message dropped").tap { |e| e.set_backtrace(caller) })
             end
           end
-          unless @work_items.empty?(step.id) && @events.empty?(step.id)
+          unless @work_items.empty?(step_id) && @events.empty?(step_id)
             raise "Unexpected item in @work_items (#{@work_items.inspect}) or @events (#{@events.inspect})"
           end
-          @running_steps.delete(step.id)
+          @running_steps.delete(step_id)
           return false, []
         end
       end
 
       def try_to_terminate
-        @running_steps.delete_if do |_, step|
-          step.state != :running
-        end
         return @running_steps.empty?
       end
 
@@ -84,8 +78,7 @@ module Dynflow
       def event(event)
         Type! event, Event
 
-        step = @running_steps[event.step_id]
-        unless step
+        unless @running_steps.include?(event.step_id)
           event.result.reject UnprocessableEvent.new('step is not suspended, it cannot process events')
           return []
         end
@@ -94,22 +87,24 @@ module Dynflow
           return []
         end
 
-        can_run_event = @work_items.empty?(step.id)
+        can_run_event = @work_items.empty?(event.step_id)
         @events_by_request_id[event.request_id] = event
-        @events.push(step.id, event)
+        @events.push(event.step_id, event)
+
         if can_run_event
-          [create_next_event_work_item(step)]
+          [create_next_event_work_item(event.step_id)]
         else
           []
         end
       end
 
       # turns the first event from the queue to the next work item to work on
-      def create_next_event_work_item(step)
-        event = @events.shift(step.id)
+      def create_next_event_work_item(step_id)
+        event = @events.shift(step_id)
+        queue = @step_queues[step_id]
         return unless event
-        work = EventWorkItem.new(event.request_id, event.execution_plan_id, step, event.event, step.queue, @world.id)
-        @work_items.push(step.id, work)
+        work = EventWorkItem.new(event.request_id, event.execution_plan_id, step_id, event.event, queue, @world.id)
+        @work_items.push(step_id, work)
         work
       end
 
