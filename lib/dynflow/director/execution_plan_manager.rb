@@ -113,7 +113,7 @@ module Dynflow
       def start_run
         return if execution_plan.run_flow.empty?
         raise 'run phase already started' if @run_manager
-        @run_manager = FlowManager.new(execution_plan, execution_plan.run_flow)
+        @run_manager = FlowManager.new(execution_plan.run_flow)
         @run_manager.start.map { |s_id| prepare_next_step(s_id) }.tap { |a| raise if a.empty? }
       end
 

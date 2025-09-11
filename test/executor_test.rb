@@ -576,12 +576,11 @@ module Dynflow
             world.plan(Support::CodeWorkflowExample::IncomingIssues, issues_data)
           end
 
-          let(:manager) { Director::FlowManager.new execution_plan, execution_plan.run_flow }
+          let(:manager) { Director::FlowManager.new execution_plan.run_flow }
 
           def assert_next_steps(expected_next_step_ids, finished_step_id = nil, success = true)
             if finished_step_id
-              step       = manager.execution_plan.steps[finished_step_id]
-              next_step_ids = manager.cursor_index[step.id].what_is_next(finished_step_id, success)
+              next_step_ids = manager.cursor_index[finished_step_id].what_is_next(finished_step_id, success)
             else
               next_step_ids = manager.start
             end
