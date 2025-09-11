@@ -37,7 +37,8 @@ module Dynflow
         start
       end
 
-      def prepare_next_step(step)
+      def prepare_next_step(step_id)
+        step = @execution_plan.steps[step_id]
         StepWorkItem.new(execution_plan.id, step, step.queue, @world.id).tap do |work|
           @running_steps_manager.add(step, work)
         end
@@ -113,7 +114,7 @@ module Dynflow
         return if execution_plan.run_flow.empty?
         raise 'run phase already started' if @run_manager
         @run_manager = FlowManager.new(execution_plan, execution_plan.run_flow)
-        @run_manager.start.map { |s| prepare_next_step(s) }.tap { |a| raise if a.empty? }
+        @run_manager.start.map { |s_id| prepare_next_step(s_id) }.tap { |a| raise if a.empty? }
       end
 
       def start_finalize

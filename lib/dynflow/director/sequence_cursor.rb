@@ -12,8 +12,8 @@ module Dynflow
         @no_error_so_far = true
       end
 
-      # @param [ExecutionPlan::Steps::Abstract, SequenceCursor] work
-      #   step or sequence cursor that was done
+      # @param [Integer, SequenceCursor] work
+      #   step_id or sequence cursor that was done
       # @param [true, false] success was the work finished successfully
       # @return [Array<Integer>] new step_ids that can be done next
       def what_is_next(work = nil, success = true)
@@ -40,15 +40,15 @@ module Dynflow
       protected
 
       # steps we can do right now without waiting for anything
-      def steps_todo
-        @todo.map do |item|
+      def step_ids_todo
+        @todo.flat_map do |item|
           case item
           when SequenceCursor
-            item.steps_todo
+            item.step_ids_todo
           else
             item
           end
-        end.flatten
+        end
       end
 
       def move
@@ -65,7 +65,7 @@ module Dynflow
 
       def next_steps
         move if @no_error_so_far
-        return steps_todo unless done?
+        return step_ids_todo unless done?
         if @parent_cursor
           return @parent_cursor.what_is_next(self, @no_error_so_far)
         else
@@ -83,7 +83,7 @@ module Dynflow
           flow.sub_flows.each { |sub_flow| add_todo(sub_flow) }
         when Flows::Atom
           @flow_manager.cursor_index[flow.step_id] = self
-          @todo << @flow_manager.execution_plan.steps[flow.step_id]
+          @todo << flow.step_id
         end
       end
     end
