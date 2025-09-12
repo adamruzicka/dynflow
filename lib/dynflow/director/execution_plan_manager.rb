@@ -83,6 +83,10 @@ module Dynflow
         @running_steps_manager.terminate
       end
 
+      def reload_execution_plan!
+        @execution_plan = @world.persistence.load_execution_plan(@execution_plan.id)
+      end
+
       private
 
       def compute_next_from_step(step_id, state)

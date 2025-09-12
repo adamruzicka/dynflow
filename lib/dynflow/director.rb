@@ -308,6 +308,7 @@ module Dynflow
     end
 
     def rescue?(manager)
+      manager.reload_execution_plan!
       if @world.terminating? || !(@world.auto_rescue && manager.execution_plan.error?)
         false
       elsif !@rescued_steps.key?(manager.execution_plan.id)
