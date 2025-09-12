@@ -29,6 +29,7 @@ module Dynflow
       end
 
       def handle_work(work_item)
+        work_item.world = @world
         work_item.execute
         delayed_events = work_item.delayed_events if work_item.is_a?(Director::StepWorkItem)
         plan_events(delayed_events) if delayed_events
