@@ -24,6 +24,8 @@ module Dynflow
       case object
       when ::Array
         object.collect { |v| dump(v) }
+      when ::Symbol
+        generate_other(object)
       else
         super
       end
@@ -38,7 +40,9 @@ module Dynflow
         end
 
         if (type_name = other[ARBITRARY_TYPE_KEY] || other[ARBITRARY_TYPE_KEY.to_s])
-          if type_name == 'Time' && (time_str = other['value'])
+          if type_name == 'Symbol'
+            return other['value'].to_sym
+          elsif type_name == 'Time' && (time_str = other['value'])
             return Serializable.send(:string_to_time, time_str)
           end
           type = Utils.constantize(type_name) rescue nil
@@ -57,6 +61,8 @@ module Dynflow
                object.to_h
              when object.respond_to?(:to_hash)
                object.to_hash
+             when object.is_a?(Symbol)
+               { ARBITRARY_TYPE_KEY => 'Symbol', 'value' => object.to_s }
              when object.is_a?(Time) && !options[:marshaled_time]
                { ARBITRARY_TYPE_KEY => 'Time', 'value' => object.utc.strftime(Serializable::TIME_FORMAT) }
              else

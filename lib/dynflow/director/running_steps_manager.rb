@@ -57,7 +57,7 @@ module Dynflow
             end
           end
           while (event = @events.shift(step_id))
-            @world.logger.debug "step #{work.execution_plan_id}:#{step_id} dropping event #{event.request_id}/#{event}"
+            @world.logger.debug "step #{event.execution_plan_id}:#{step_id} dropping event #{event.request_id}/#{event}"
             if event.result
               event.result.reject(UnprocessableEvent.new("Message dropped").tap { |e| e.set_backtrace(caller) })
             end

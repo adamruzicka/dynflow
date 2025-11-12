@@ -90,11 +90,11 @@ module Dynflow
           hash[:queue],
           hash[:sender_orchestrator_id],
           delayed_events: hash[:delayed_events],
-          state: hash[:state])
+          state: Dynflow.serializer.load(hash[:state]))
       end
 
       def to_hash
-        super.merge(delayed_events: @delayed_events, state: @state)
+        super.merge(delayed_events: @delayed_events, state: Dynflow.serializer.dump(@state), step_id: @step_id)
       end
     end
 
@@ -123,7 +123,7 @@ module Dynflow
           hash[:queue],
           hash[:sender_orchestrator_id],
           delayed_events: hash[:delayed_events],
-          state: hash[:state])
+          state: Dynflow.serializer.load(hash[:state]))
       end
     end
 
