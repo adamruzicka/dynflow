@@ -28,20 +28,22 @@ module Dynflow
         def initialize(world, *_args)
           @world = world
           @logger = world.logger
-          wait_for_orchestrator_lock
+          @subqueue = ::Sidekiq.configure_server { |c| c[:queues].find { |q| q.start_with? 'dynflow_orchestrator:' } }
+          @reply_queue = @subqueue || 'dynflow_orchestrator'
+          wait_for_orchestrator_lock unless @subqueue
           super
           schedule_update_telemetry
-          begin_startup!
+          begin_startup! unless @subqueue
         end
 
         def heartbeat
           super
-          reacquire_orchestrator_lock
+          reacquire_orchestrator_lock unless @subqueue
         end
 
         def start_termination(*args)
           super
-          release_orchestrator_lock
+          release_orchestrator_lock unless @subqueue
           finish_termination
         end
 
@@ -52,7 +54,7 @@ module Dynflow
 
         def feed_pool(work_items)
           work_items.each do |new_work|
-            WorkerJobs::PerformWork.set(queue: suggest_queue(new_work)).perform_async(new_work)
+            WorkerJobs::PerformWork.set(queue: suggest_queue(new_work)).perform_async(new_work, @reply_queue)
           end
         end
 
@@ -68,6 +70,8 @@ module Dynflow
         end
 
         def work_finished(work, delayed_events = nil)
+          return super if @subqueue
+
           # If the work item is sent in reply to a request from the current orchestrator, proceed
           if work.sender_orchestrator_id == @world.id
             super
