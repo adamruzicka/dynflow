@@ -6,6 +6,7 @@ require 'dynflow/executors/sidekiq/orchestrator_jobs'
 require 'dynflow/executors/sidekiq/worker_jobs'
 require 'dynflow/executors/sidekiq/redis_locking'
 
+require 'sidekiq/api'
 require 'sidekiq-reliable-fetch'
 Sidekiq.configure_server do |config|
   # Use semi-reliable fetch
@@ -50,6 +51,17 @@ module Dynflow
         # TODO: needs thoughs on how to implement it
         def execution_status(execution_plan_id = nil)
           {}
+        end
+
+        def prune_orphaned_queues
+          active_world_ids = @world.coordinator.find_worlds(true).map(&:id)
+          ::Sidekiq::Queue.all.each do |queue|
+            next unless queue.name.start_with?('dynflow_orchestrator:')
+            world_id = queue.name.split(':', 2)[1]
+            next if active_world_ids.include?(world_id)
+            logger.info("Removing orphaned orchestrator queue #{queue.name}")
+            queue.clear
+          end
         end
 
         def feed_pool(work_items)
