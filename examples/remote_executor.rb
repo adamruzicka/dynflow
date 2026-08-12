@@ -166,6 +166,7 @@ elsif defined?(Sidekiq)
   # of the ActiveJob worker
   queues = Sidekiq.configure_server { |c| c.options[:queues] }
   world = if queues.include?("dynflow_orchestrator") || (orchestrator_queue = queues.find { |q| q.start_with?('dynflow_orchestrator:') })
+            orchestrator_queue ||= 'dynflow_orchestrator'
             RemoteExecutorExample.initialize_sidekiq_orchestrator(orchestrator_queue.split(':')[1])
           elsif (queues - ['dynflow_orchestrator']).any?
             RemoteExecutorExample.initialize_sidekiq_worker
