@@ -29,7 +29,6 @@ module Dynflow
         end
 
         class HandlePersistenceError < InternalJobBase
-
           # @param request_envelope [Dispatcher::Request] - request to handle on orchestrator side
           #   usually to start new execution or to pass some event
           def perform(error, work_item)
